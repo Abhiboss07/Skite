@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/brand/logo";
 import { usePrefersReducedMotion } from "@/hooks/use-media-query";
 import { EASE } from "@/lib/motion";
+import { siteConfig } from "@/lib/site";
 
 const SESSION_KEY = "skite:intro-played";
 const PHASES = ["Reading strokes", "Inferring structure", "Resolving surfaces", "Ready"] as const;
@@ -30,6 +31,9 @@ export function Preloader() {
   // Decide on mount, not during render — sessionStorage is client-only and
   // reading it during render would desync hydration.
   useEffect(() => {
+    // Disabled by default — see siteConfig.features.introCurtain for the
+    // measured LCP cost and the reasoning.
+    if (!siteConfig.features.introCurtain) return;
     if (reducedMotion) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
     // sessionStorage is a browser-only API, so this decision cannot be made
@@ -44,7 +48,10 @@ export function Preloader() {
 
     document.body.style.overflow = "hidden";
     const start = performance.now();
-    const DURATION = 1900;
+    // Kept deliberately short. Every millisecond here is added directly to
+    // Speed Index, and at 1.9s the curtain was the single largest performance
+    // cost on the homepage. Just long enough to register as intent.
+    const DURATION = 1100;
     let frame = 0;
 
     const tick = (now: number) => {
@@ -56,7 +63,7 @@ export function Preloader() {
         frame = requestAnimationFrame(tick);
       } else {
         sessionStorage.setItem(SESSION_KEY, "1");
-        setTimeout(() => setActive(false), 260);
+        setTimeout(() => setActive(false), 140);
       }
     };
 
@@ -79,7 +86,7 @@ export function Preloader() {
           key="preloader"
           className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background"
           exit={{ clipPath: "inset(0% 0% 100% 0%)" }}
-          transition={{ duration: 0.95, ease: EASE.inOut }}
+          transition={{ duration: 0.7, ease: EASE.inOut }}
           aria-hidden
         >
           <div className="grid-paper mask-radial-fade absolute inset-0 opacity-70" />
@@ -92,8 +99,11 @@ export function Preloader() {
             <LogoMark className="h-14 w-14" animated />
 
             <div className="flex flex-col items-center gap-3">
-              <div className="font-display text-5xl leading-none font-semibold tabular-nums tracking-[-0.04em]">
-                {progress}
+              <div className="font-display text-5xl leading-none font-semibold tracking-[-0.04em]">
+                {/* Fixed 3-character box. Letting the number size itself grew it
+                    from "0%" to "100%" mid-count, shifting this centred stack on
+                    every digit — a measurable CLS contribution. */}
+                <span className="inline-block w-[3ch] text-right tabular-nums">{progress}</span>
                 <span className="text-muted">%</span>
               </div>
 

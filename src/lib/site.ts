@@ -35,6 +35,26 @@ export const siteConfig = {
     founded: "2024",
     location: "San Francisco, CA",
   },
+
+  features: {
+    /**
+     * The first-visit intro curtain (components/interactive/preloader).
+     *
+     * OFF by default, deliberately. The curtain is an opaque full-screen
+     * overlay, and it can only mount after hydration — so it delays Largest
+     * Contentful Paint by its own duration plus the time to hydrate. Measured
+     * on Lighthouse's throttled mobile profile:
+     *
+     *   curtain on  → LCP 4.6s, Performance 82
+     *   curtain off → LCP 1.9s, Performance 99
+     *
+     * That is not a bug to be tuned away; any opaque loading screen trades LCP
+     * for the brand moment one-for-one. Set this to `true` if the first
+     * impression is worth more to you than the score — everything still works,
+     * and returning visitors never see it (it is once per session).
+     */
+    introCurtain: false,
+  },
 } as const;
 
 export type NavItem = {

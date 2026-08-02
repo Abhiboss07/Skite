@@ -3,7 +3,7 @@ import { Bricolage_Grotesque, Inter, Instrument_Serif, JetBrains_Mono } from "ne
 
 import { GrainOverlay } from "@/components/interactive/grain-overlay";
 import { CommandPaletteProvider } from "@/components/interactive/command-palette";
-import { CustomCursor } from "@/components/interactive/custom-cursor";
+import { CursorMount } from "@/components/interactive/cursor-mount";
 import { Preloader } from "@/components/interactive/preloader";
 import { ScrollProgress } from "@/components/interactive/scroll-progress";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -15,21 +15,27 @@ import { siteConfig } from "@/lib/site";
 
 import "./globals.css";
 
-/* Display: geometric grotesque with an optical-size axis, so huge headlines
-   get tighter, more refined letterforms than small ones. */
+/* Display face for headlines.
+   The optical-size axis was dropped: carrying it made the variable file ~40%
+   larger, and all four families are preloaded on the critical path where they
+   compete with HTML and CSS for bandwidth. At the sizes actually used here the
+   optical refinement was not visible; the bytes were. */
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-bricolage",
   display: "swap",
-  axes: ["opsz"],
 });
 
+/* Body copy — and the LCP element on most pages, so this one stays preloaded. */
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
+/* Only used for small eyebrow labels and code, none of which are LCP
+   candidates. Not preloaded, so it never competes with the headline. */
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono-jet",
   display: "swap",
+  preload: false,
 });
 
 /* The accent voice — one italic serif word inside a grotesque headline is the
@@ -121,7 +127,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
               <Preloader />
               <ScrollProgress />
-              <CustomCursor />
+              <CursorMount />
               <GrainOverlay />
 
               <SiteHeader />

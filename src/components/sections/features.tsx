@@ -19,7 +19,10 @@ import { cn } from "@/lib/utils";
  */
 export function Features() {
   return (
-    <section className="section-y relative" aria-labelledby="features-heading">
+    // overflow-hidden is load-bearing: the decorative glow below is 70rem wide
+    // and would otherwise push the document 400px wider than the viewport on
+    // small screens, making the whole page scroll sideways.
+    <section className="section-y relative overflow-hidden" aria-labelledby="features-heading">
       <div
         aria-hidden
         className="pointer-events-none absolute top-1/4 left-1/2 h-[40rem] w-[70rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(139,92,246,0.14),transparent_65%)] blur-3xl"

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { usePrefersReducedMotion } from "@/hooks/use-media-query";
+import { useIsDesktop, usePrefersReducedMotion } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 type Particle = {
@@ -44,11 +44,22 @@ export function ParticleField({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = usePrefersReducedMotion();
+  // Ambient decoration only, and a continuous rAF loop is exactly the kind of
+  // work a phone can least afford. Desktop keeps it; small screens get the
+  // aurora alone, which reads almost identically at that size.
+  const isDesktop = useIsDesktop();
+  const enabled = isDesktop && !reducedMotion;
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (!enabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // Seeding and the first frames are meaningful main-thread work. Defer them
+    // until the browser is idle so they land after hydration and first paint
+    // rather than competing with them (this showed up directly as TBT).
+
+    let started = false;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
@@ -148,16 +159,26 @@ export function ParticleField({
       pointer.y = -9999;
     };
 
-    seed();
-    frame = requestAnimationFrame(draw);
+    const start = () => {
+      if (started) return;
+      started = true;
+      seed();
+      frame = requestAnimationFrame(draw);
+    };
 
-    const resizeObserver = new ResizeObserver(seed);
+    const schedule = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 300));
+    const idleHandle = schedule(start) as unknown as number;
+
+    // Re-seed on resize, but only once the field has actually started.
+    const resizeObserver = new ResizeObserver(() => {
+      if (started) seed();
+    });
     resizeObserver.observe(canvas);
 
     // Stop burning frames once the field scrolls out of view.
     const visibility = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !running) {
+        if (entry.isIntersecting && !running && started) {
           running = true;
           frame = requestAnimationFrame(draw);
         } else if (!entry.isIntersecting && running) {
@@ -176,15 +197,18 @@ export function ParticleField({
 
     return () => {
       running = false;
+      if (idleHandle !== undefined && window.cancelIdleCallback) {
+        window.cancelIdleCallback(idleHandle);
+      }
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       visibility.disconnect();
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerleave", onPointerLeave);
     };
-  }, [density, maxParticles, linkDistance, interactive, reducedMotion]);
+  }, [density, maxParticles, linkDistance, interactive, enabled]);
 
-  if (reducedMotion) return null;
+  if (!enabled) return null;
 
   return (
     <canvas

@@ -235,6 +235,50 @@
     }
   }
 
+  /* --- Above-the-fold entrances -----------------------------------------
+     These exist as CSS rather than JS for one reason: Motion serialises its
+     `initial` state into the server HTML, so a JS-driven entrance ships as
+     opacity:0 and nothing paints until hydration finishes. That pushed LCP
+     past 4.5s. CSS animations start at first paint, with no JS at all.
+     Reserved for content in the first viewport; scroll-triggered reveals
+     further down stay on Motion, where being invisible is the point. */
+  @keyframes enter-rise {
+    from {
+      opacity: 0;
+      transform: translateY(26px);
+      filter: blur(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes word-rise {
+    from {
+      opacity: 0;
+      transform: translateY(110%) rotateX(-55deg);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) rotateX(0deg);
+    }
+  }
+
   /* Radix measures the collapsed panel and exposes its height as a CSS var,
      which lets us animate to an intrinsic height with no JS measurement. */
   @keyframes acc-down {
@@ -360,6 +404,15 @@
   html {
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+    /* Always reserve the scrollbar gutter. Without this, anything that locks
+       scrolling (preloader, mobile menu, command palette) removes the
+       scrollbar and reflows the entire page horizontally — which measured as
+       a 0.31 CLS before it was fixed. */
+    scrollbar-gutter: stable;
+    /* Belt and braces against sideways scroll. Setting this only on <body>
+       did not reliably propagate to the viewport in Chrome, so a stray wide
+       decorative element could still scroll the page. */
+    overflow-x: clip;
   }
 
   /* Lenis owns scrolling when active; native smooth would fight it */
@@ -583,6 +636,76 @@
   }
   &:hover::after {
     transform: translateX(100%) skewX(-18deg);
+  }
+}
+
+/* Above-the-fold entrance. `both` fill matters: under prefers-reduced-motion
+   the global rule collapses the duration to ~0, and the fill leaves the element
+   at its final state rather than stuck at opacity 0. */
+@utility enter {
+  animation: enter-rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+@utility page-enter {
+  animation: page-enter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Transform-only entrance, for elements that are LCP candidates. Fading from
+   opacity 0 stops the browser recording a contentful paint until the animation
+   starts; sliding while fully opaque animates without that cost. */
+@keyframes enter-slide {
+  from {
+    transform: translateY(18px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@utility enter-slide {
+  animation: enter-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* Per-word headline reveal. Pair with an overflow-hidden wrapper. */
+@utility word-enter {
+  animation: word-rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* --- Scroll reveal ---------------------------------------------------------
+   Driven by a tiny IntersectionObserver that flips `data-shown`; the animation
+   itself is CSS. Doing this in JS meant importing Motion into essentially every
+   route for a fade — this keeps the identical look for a few hundred bytes.
+   Written as plain classes rather than @utility because the group variant needs
+   a descendant selector. */
+@layer components {
+  .js-reveal {
+    opacity: 0;
+    transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 0), 0);
+    filter: blur(var(--reveal-blur, 8px));
+    transition-property: opacity, transform, filter;
+    transition-duration: var(--reveal-duration, 650ms);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .js-reveal[data-shown],
+  .js-reveal-group[data-shown] .js-reveal {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+
+  /* No transition to unwind, and nothing should ever be left invisible. */
+  @media (prefers-reduced-motion: reduce) {
+    .js-reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      transition: none;
+    }
   }
 }
 

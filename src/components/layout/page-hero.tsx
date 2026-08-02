@@ -1,12 +1,9 @@
-"use client";
-
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { Aurora } from "@/components/backdrop/aurora";
-import { Reveal } from "@/components/motion/reveal";
-import { LineReveal } from "@/components/motion/text-reveal";
+import { LineRise, Rise } from "@/components/motion/rise";
 import { Eyebrow } from "@/components/ui/section-heading";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +15,10 @@ type Crumb = { label: string; href: string };
  * Using one component for all 18 pages is what keeps the site feeling like a
  * single product: identical rhythm, identical entrance, identical backdrop
  * weight. Pages differ in content, never in chrome.
+ *
+ * A server component: every entrance here is CSS, so the headline and lead are
+ * present and painting in the server HTML. These are the LCP elements on most
+ * routes, and animating them with JS delayed them until after hydration.
  */
 export function PageHero({
   eyebrow,
@@ -54,7 +55,7 @@ export function PageHero({
           )}
         >
           {crumbs?.length ? (
-            <Reveal duration={0.5}>
+            <Rise>
               <nav aria-label="Breadcrumb">
                 <ol className="flex flex-wrap items-center gap-1 text-[0.8125rem] text-subtle">
                   <li>
@@ -78,28 +79,26 @@ export function PageHero({
                   ))}
                 </ol>
               </nav>
-            </Reveal>
+            </Rise>
           ) : null}
 
           {eyebrow ? (
-            <Reveal duration={0.5} delay={0.05}>
+            <Rise delay={40}>
               <Eyebrow align={align}>{eyebrow}</Eyebrow>
-            </Reveal>
+            </Rise>
           ) : null}
 
           <h1 className={cn("text-display", align === "center" && "text-balance")}>
-            <LineReveal immediate delay={0.1}>
-              {title}
-            </LineReveal>
+            <LineRise delay={90}>{title}</LineRise>
           </h1>
 
           {lead ? (
-            <Reveal delay={0.22}>
+            <Rise delay={170}>
               <p className={cn("text-lead text-muted", align === "left" && "max-w-2xl")}>{lead}</p>
-            </Reveal>
+            </Rise>
           ) : null}
 
-          {children ? <Reveal delay={0.3}>{children}</Reveal> : null}
+          {children ? <Rise delay={240}>{children}</Rise> : null}
         </div>
       </div>
     </section>

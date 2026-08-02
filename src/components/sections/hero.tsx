@@ -7,7 +7,7 @@ import { useRef } from "react";
 
 import { Aurora } from "@/components/backdrop/aurora";
 import { ParticleField } from "@/components/backdrop/particle-field";
-import { LineReveal, WordReveal } from "@/components/motion/text-reveal";
+import { LineRise, Rise, WordRise } from "@/components/motion/rise";
 import { Parallax } from "@/components/motion/parallax";
 import { LazyRedrawScene } from "@/components/three/lazy-redraw-scene";
 import { Button } from "@/components/ui/button";
@@ -59,12 +59,11 @@ export function Hero() {
         style={reducedMotion ? undefined : { y: contentY, opacity: contentOpacity }}
       >
         <div className="max-w-3xl">
-          {/* Announcement */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE.out, delay: 0.15 }}
-          >
+          {/* Announcement. Everything in this first screenful uses the CSS
+              entrance so it paints from the server HTML rather than waiting on
+              hydration — this block and the headline below are the LCP
+              candidates on this page. */}
+          <Rise delay={60}>
             <Link
               href="/blog"
               className={cn(
@@ -83,33 +82,36 @@ export function Hero() {
                 strokeWidth={2}
               />
             </Link>
-          </motion.div>
+          </Rise>
 
           {/* Headline */}
           <h1 className="mt-8 text-hero">
-            <WordReveal text="From sketch to" immediate delay={0.3} className="block" />
-            <LineReveal delay={0.55} immediate>
+            <span className="block">
+              <WordRise text="From sketch to" delay={130} />
+            </span>
+            <LineRise delay={250}>
               <Accent>stunning reality</Accent>
               <span className="text-electric-400">.</span>
-            </LineReveal>
+            </LineRise>
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.85, ease: EASE.out, delay: 0.9 }}
-            className="mt-8 max-w-xl text-lead text-muted"
+          {/* Transform-only entrance, deliberately. This paragraph is the LCP
+              element at mobile widths, and fading it from opacity 0 stops the
+              browser recording a contentful paint until the animation starts.
+              Sliding at full opacity still moves with the rest of the
+              choreography without costing LCP. */}
+          <p
+            className="enter-slide mt-8 max-w-xl text-lead text-muted"
+            style={{ "--enter-delay": "330ms" } as React.CSSProperties}
           >
             SKITE turns hand-drawn wireframes, whiteboard photos and Figma frames into
             production-ready websites — or photoreal renders — while preserving the exact
             layout you drew.
-          </motion.p>
+          </p>
 
           {/* Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE.out, delay: 1.05 }}
+          <Rise
+            delay={420}
             className="mt-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center"
           >
             <Button asChild size="xl">
@@ -125,16 +127,15 @@ export function Hero() {
                 See it work
               </Link>
             </Button>
-          </motion.div>
+          </Rise>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 1.25 }}
+          <Rise
+            delay={500}
+            as="p"
             className="mt-6 font-mono text-[11px] tracking-[0.08em] text-subtle"
           >
             5 free redraws · No card required · Your work is never used for training
-          </motion.p>
+          </Rise>
         </div>
       </motion.div>
 

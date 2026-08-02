@@ -113,19 +113,26 @@ export function SiteHeader() {
             </nav>
 
             <div className="flex shrink-0 items-center gap-2">
+              {/* No aria-label here on purpose: an explicit label of
+                  "Search — press Command K" did not contain the visible "⌘K",
+                  which trips WCAG 2.5.3 (label in name). The visible word
+                  "Search" is the accessible name, and the shortcut hint is
+                  decorative, so it is hidden from assistive tech. */}
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                aria-label="Search — press Command K"
                 className={cn(
                   "hidden items-center gap-2.5 rounded-md border border-border py-2 pr-2 pl-3",
                   "text-sm text-subtle transition-colors duration-300",
                   "hover:border-border-strong hover:text-foreground md:flex",
                 )}
               >
-                <Search className="size-3.5" strokeWidth={1.75} />
+                <Search className="size-3.5" strokeWidth={1.75} aria-hidden />
                 <span className="pr-6">Search</span>
-                <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px]">
+                <kbd
+                  aria-hidden
+                  className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px]"
+                >
                   ⌘K
                 </kbd>
               </button>

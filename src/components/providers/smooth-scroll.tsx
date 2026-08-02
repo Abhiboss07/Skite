@@ -3,8 +3,6 @@
 import Lenis from "lenis";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { usePrefersReducedMotion } from "@/hooks/use-media-query";
 
@@ -18,10 +16,14 @@ export function useLenis() {
 /**
  * Owns the page's scroll behaviour.
  *
- * Lenis replaces the browser's scroll easing with an interpolated one, and GSAP's
- * ticker drives its RAF loop so ScrollTrigger, Lenis and every GSAP timeline
- * advance on the exact same frame — mixing two RAF loops is what causes the
- * classic "scroll-linked animation lags one frame behind" jitter.
+ * Lenis replaces the browser's scroll easing with an interpolated one. It drives
+ * the real scroll position, so anything reading native scroll — Motion's
+ * `useScroll`, IntersectionObserver, `whileInView` — follows it for free.
+ *
+ * This previously ran Lenis off GSAP's ticker to keep ScrollTrigger in sync.
+ * Nothing in this codebase uses ScrollTrigger (every scroll animation is
+ * Motion), so GSAP was ~55kB gzipped of dependency existing only to synchronise
+ * a library nobody called. Lenis's own RAF loop does the job.
  *
  * Fully disabled when the visitor prefers reduced motion.
  */
@@ -34,37 +36,34 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (reducedMotion) return;
 
-    gsap.registerPlugin(ScrollTrigger);
+    // Constructing Lenis binds listeners and starts a RAF loop. Holding it
+    // until the browser is idle keeps that work off the critical path; native
+    // scrolling works perfectly in the meantime, so nothing is broken while we
+    // wait — it just isn't eased yet.
+    let instance: Lenis | null = null;
 
-    const instance = new Lenis({
-      duration: 1.05,
-      // Expo-out: matches the entrance curve used everywhere else on the site.
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      touchMultiplier: 1.6,
-      wheelMultiplier: 1,
-      autoRaf: false,
-    });
+    const init = () => {
+      instance = new Lenis({
+        duration: 1.05,
+        // Expo-out: matches the entrance curve used everywhere else on the site.
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        touchMultiplier: 1.6,
+        wheelMultiplier: 1,
+        autoRaf: true,
+      });
 
-    // Lenis is exactly the "external system" this rule exists to allow; the
-    // instance must be published to context so children can drive scrolling.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLenis(instance);
+      // Lenis is exactly the "external system" this rule exists to allow; the
+      // instance must be published to context so children can drive scrolling.
+      setLenis(instance);
+    };
 
-    const onScroll = () => ScrollTrigger.update();
-    instance.on("scroll", onScroll);
-
-    // GSAP's ticker reports seconds; Lenis expects milliseconds.
-    const raf = (time: number) => instance.raf(time * 1000);
-    gsap.ticker.add(raf);
-    gsap.ticker.lagSmoothing(0);
-
-    ScrollTrigger.refresh();
+    const schedule = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200));
+    const handle = schedule(init) as unknown as number;
 
     return () => {
-      gsap.ticker.remove(raf);
-      instance.off("scroll", onScroll);
-      instance.destroy();
+      if (window.cancelIdleCallback) window.cancelIdleCallback(handle);
+      instance?.destroy();
       setLenis(null);
     };
   }, [reducedMotion]);
@@ -81,7 +80,6 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     } else {
       window.scrollTo(0, 0);
     }
-    ScrollTrigger.refresh();
   }, [pathname, lenis]);
 
   return <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>;
