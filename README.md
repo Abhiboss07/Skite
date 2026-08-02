@@ -105,6 +105,19 @@ checks and a bundle breakdown — is written up in [AUDIT.md](AUDIT.md).
 Headline: desktop Lighthouse is 100 on 14 of 15 pages, accessibility, best
 practices and SEO are 100 everywhere, and CLS is 0.
 
+## Phase 2 — the AI engine
+
+Not implemented. The architecture is designed and under review in
+[docs/architecture](docs/architecture/) — pipeline, the layout IR, model
+selection, API, data model, security, cost model, and a tiered roadmap. No
+generation code should be written until that review is complete.
+
+Two findings in it contradict copy on this site and need a decision:
+the published "11s median time to first render"
+([08 §4](docs/architecture/08-cost-and-performance.md#4-latency--and-a-second-finding))
+and "unlimited redraws" on the Studio plan
+([08 §3](docs/architecture/08-cost-and-performance.md#3-margin-analysis)).
+
 ## Before this goes live
 
 - [ ] **Replace all placeholder content.** `lib/content.ts` flags it: the
