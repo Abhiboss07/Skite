@@ -45,8 +45,14 @@ Empty in the repository, by design: a handful of photographs the author took
 would be no more representative than the synthetic set, and would carry the
 false authority of being "real".
 
-To populate it, add images alongside an `index.json` in the same shape the
-generator writes:
+**The fastest way to populate it is the annotation tool at `/annotate`.** Load a
+photo, drag a box, pick a role, and press *Save to dataset* — it writes the
+image, the truth JSON and the index entry in one step, so the harness picks the
+sample up with no further work. Nesting is derived from containment rather than
+entered by hand, using the same rule the pipeline's structure pass uses.
+
+To add samples by hand instead, drop images alongside an `index.json` in the
+same shape the generator writes:
 
 ```json
 {

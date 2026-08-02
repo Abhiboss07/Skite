@@ -49,6 +49,11 @@ type SampleResult = {
   order: number;
   coverage: number;
   componentAccuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  falsePositives: number;
+  falseNegatives: number;
   ocrAccuracy: number | null;
   buildStatus: string;
   responsiveOk: boolean;
@@ -135,6 +140,8 @@ for (const sample of samples) {
     results.push({
       id: sample.id, style: sample.style, ok: false, ms: Date.now() - started,
       fidelity: 0, geometry: 0, order: 0, coverage: 0, componentAccuracy: 0,
+      precision: 0, recall: 0, f1: 0, falsePositives: 0,
+      falseNegatives: truth.nodes.length,
       ocrAccuracy: null, buildStatus: "failed", responsiveOk: false,
       nodeCount: 0, referenceCount: truth.nodes.length, warnings: 0,
     });
@@ -184,6 +191,11 @@ for (const sample of samples) {
     order: score.order,
     coverage: score.coverage,
     componentAccuracy: score.componentAccuracy,
+    precision: score.precision,
+    recall: score.recall,
+    f1: score.f1,
+    falsePositives: score.falsePositives,
+    falseNegatives: score.falseNegatives,
     ocrAccuracy,
     buildStatus: result.report.buildStatus,
     responsiveOk,
@@ -196,8 +208,9 @@ for (const sample of samples) {
   console.log(
     `  ${sample.id.padEnd(16)} fidelity ${pct(score.fidelity)}  ` +
       `geom ${pct(score.geometry)}  cover ${pct(score.coverage)}  ` +
-      `role ${pct(score.componentAccuracy)}  ${String(result.report.totalMs).padStart(4)}ms  ` +
-      `${result.ir.nodes.length}/${truth.nodes.length} nodes`,
+      `role ${pct(score.componentAccuracy)}  F1 ${pct(score.f1)}  ` +
+      `+${score.falsePositives}/-${score.falseNegatives}  ` +
+      `${String(result.report.totalMs).padStart(4)}ms`,
   );
 }
 
@@ -222,6 +235,11 @@ function summarise(rows: SampleResult[]) {
     readingOrder: mean(rows.map((r) => r.order)),
     coverage: mean(rows.map((r) => r.coverage)),
     componentAccuracy: mean(rows.map((r) => r.componentAccuracy)),
+    precision: mean(rows.map((r) => r.precision)),
+    recall: mean(rows.map((r) => r.recall)),
+    f1: mean(rows.map((r) => r.f1)),
+    falsePositives: rows.reduce((sum, r) => sum + r.falsePositives, 0),
+    falseNegatives: rows.reduce((sum, r) => sum + r.falseNegatives, 0),
     ocrAccuracy: ocr.length ? mean(ocr) : null,
     buildSuccessRate: rows.filter((r) => r.buildStatus === "passed").length / (rows.length || 1),
     responsivePassRate: rows.filter((r) => r.responsiveOk).length / (rows.length || 1),
@@ -263,6 +281,11 @@ const rows: [string, (s: ReturnType<typeof summarise>) => string][] = [
   ["  · reading order", (s) => pct(s.readingOrder)],
   ["  · coverage", (s) => pct(s.coverage)],
   ["Component accuracy", (s) => pct(s.componentAccuracy)],
+  ["Precision", (s) => pct(s.precision)],
+  ["Recall", (s) => pct(s.recall)],
+  ["F1", (s) => pct(s.f1)],
+  ["False positives", (s) => String(s.falsePositives).padStart(6)],
+  ["False negatives", (s) => String(s.falseNegatives).padStart(6)],
   ["OCR accuracy", (s) => pct(s.ocrAccuracy)],
   ["Build success rate", (s) => pct(s.buildSuccessRate)],
   ["Responsive pass rate", (s) => pct(s.responsivePassRate)],

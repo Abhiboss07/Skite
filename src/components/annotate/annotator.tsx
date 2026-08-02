@@ -57,7 +57,20 @@ const CANVAS_W = 1440;
 type Box = { x: number; y: number; w: number; h: number };
 type Annotation = { id: string; role: Role; box: Box; text?: string };
 
-type Draft = { startX: number; startY: number; x: number; y: number } | null;
+/**
+ * An in-progress drag.
+ *
+ * `overId` records the region the press landed on, if any. A press that ends
+ * without travelling is a selection of that region; one that travels is a new
+ * box. Deciding on release rather than on press is what allows a card to be
+ * drawn *inside* a hero — the first version refused to start a drag over an
+ * existing region, which made nested annotation impossible, and nesting is the
+ * main thing being annotated.
+ */
+type Draft = { startX: number; startY: number; x: number; y: number; overId: string | null } | null;
+
+/** Below this, in canvas units, a drag is a click. */
+const CLICK_SLOP = 8;
 
 export function Annotator() {
   const [image, setImage] = useState<{ src: string; name: string; w: number; h: number } | null>(null);
@@ -106,13 +119,10 @@ export function Annotator() {
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (!image) return;
-    // Only start a box on the surface itself, so clicking an existing box
-    // selects it instead of drawing a new one on top.
-    if (event.target !== event.currentTarget) return;
     const { x, y } = toCanvas(event);
+    const overId = (event.target as SVGElement).dataset?.regionId ?? null;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    setDraft({ startX: x, startY: y, x, y });
-    setSelected(null);
+    setDraft({ startX: x, startY: y, x, y, overId });
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -129,15 +139,29 @@ export function Annotator() {
       w: Math.round(Math.abs(draft.x - draft.startX)),
       h: Math.round(Math.abs(draft.y - draft.startY)),
     };
+    const wasClick = box.w < CLICK_SLOP || box.h < CLICK_SLOP;
     setDraft(null);
 
-    // A click, not a drag. Discarding it silently avoids littering the list
-    // with zero-area boxes every time someone taps the image.
-    if (box.w < 8 || box.h < 8) return;
+    if (wasClick) {
+      // Select what was under the press, or clear the selection on empty space.
+      setSelected(draft.overId);
+      if (draft.overId) {
+        const hit = annotations.find((a) => a.id === draft.overId);
+        if (hit) setRole(hit.role);
+      }
+      return;
+    }
 
+    // The id is computed here, not inside the updater. React invokes state
+    // updaters more than once in development, and mutating a ref inside one
+    // numbered the regions n2, n4, n6 — harmless to the geometry, but the ids
+    // appear in exported ground truth and should mean what they look like.
     const id = `n${++counter.current}`;
+
+    // Deliberately does not select the new region. Selecting it would make the
+    // role palette destructive: picking the role for the *next* box would
+    // silently relabel the one just drawn.
     setAnnotations((prev) => [...prev, { id, role, box }]);
-    setSelected(id);
     setSaved(null);
   };
 
@@ -378,12 +402,8 @@ export function Annotator() {
                     fillOpacity={selected === a.id ? 0.24 : 0.08}
                     stroke={ROLE_COLOUR[a.role]}
                     strokeWidth={selected === a.id ? 5 : 2.5}
-                    className="pointer-events-auto cursor-pointer"
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      setSelected(a.id);
-                      setRole(a.role);
-                    }}
+                    data-region-id={a.id}
+                    className="pointer-events-auto cursor-crosshair"
                   />
                   <text x={a.box.x + 8} y={a.box.y + 26} fontSize={18} fill={ROLE_COLOUR[a.role]}>
                     {a.role}
