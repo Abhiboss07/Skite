@@ -28,6 +28,25 @@ export type FidelityReport = {
   coverage: number;
   /** Share of matched nodes given the correct role. */
   componentAccuracy: number;
+  /**
+   * Detection quality as a confusion matrix.
+   *
+   * A false positive is a produced region that matched nothing in the ground
+   * truth — the detector invented it, usually by splitting one drawn rectangle
+   * in two or by finding structure in paper texture. A false negative is a
+   * ground-truth region the detector never found.
+   *
+   * `recall` is arithmetically identical to `coverage` — both are
+   * matched / referenceCount. It is reported under both names because the two
+   * words belong to different conversations (layout fidelity vs detection
+   * quality), but nobody should read them as two independent pieces of
+   * evidence.
+   */
+  falsePositives: number;
+  falseNegatives: number;
+  precision: number;
+  recall: number;
+  f1: number;
   /** The published headline number. */
   fidelity: number;
   matched: number;
@@ -133,11 +152,22 @@ export function scoreFidelity(
 
   const fidelity = 0.6 * geometry + 0.25 * order + 0.15 * coverage;
 
+  const falseNegatives = ref.length - matches.length;
+  const falsePositives = prod.length - matches.length;
+  const precision = prod.length ? matches.length / prod.length : 0;
+  const recall = coverage;
+  const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
   return {
     geometry,
     order,
     coverage,
     componentAccuracy,
+    falsePositives,
+    falseNegatives,
+    precision,
+    recall,
+    f1,
     fidelity,
     matched: matches.length,
     referenceCount: ref.length,
