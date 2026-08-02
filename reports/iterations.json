@@ -180,5 +180,240 @@
       "ms": 266.4166666666667
     },
     "gate": "improved"
+  },
+  {
+    "iteration": 4,
+    "label": "P3 — text ceiling from the page's own height distribution",
+    "at": "2026-08-02T19:59:41.316Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9079553332785334,
+        "geometry": 0.8693194948581617,
+        "order": 1,
+        "coverage": 0.9090909090909091,
+        "componentAccuracy": 0.7666666666666667,
+        "precision": 0.5660377358490566,
+        "recall": 0.9090909090909091,
+        "f1": 0.6976744186046512,
+        "falsePositives": 23,
+        "falseNegatives": 3,
+        "detected": 53,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 395
+      }
+    },
+    "real": {
+      "fidelity": 0.9079553332785334,
+      "geometry": 0.8693194948581617,
+      "order": 1,
+      "coverage": 0.9090909090909091,
+      "componentAccuracy": 0.7666666666666667,
+      "precision": 0.5660377358490566,
+      "recall": 0.9090909090909091,
+      "f1": 0.6976744186046512,
+      "falsePositives": 23,
+      "falseNegatives": 3,
+      "detected": 53,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 395
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 260.9166666666667
+    },
+    "gate": "mixed"
+  },
+  {
+    "iteration": 5,
+    "label": "P3 — glyphs are not containers: interior-ink test",
+    "at": "2026-08-02T20:01:12.745Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9079553332785334,
+        "geometry": 0.8693194948581617,
+        "order": 1,
+        "coverage": 0.9090909090909091,
+        "componentAccuracy": 0.7666666666666667,
+        "precision": 0.5660377358490566,
+        "recall": 0.9090909090909091,
+        "f1": 0.6976744186046512,
+        "falsePositives": 23,
+        "falseNegatives": 3,
+        "detected": 53,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 389
+      }
+    },
+    "real": {
+      "fidelity": 0.9079553332785334,
+      "geometry": 0.8693194948581617,
+      "order": 1,
+      "coverage": 0.9090909090909091,
+      "componentAccuracy": 0.7666666666666667,
+      "precision": 0.5660377358490566,
+      "recall": 0.9090909090909091,
+      "f1": 0.6976744186046512,
+      "falsePositives": 23,
+      "falseNegatives": 3,
+      "detected": 53,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 389
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 264.98333333333335
+    },
+    "gate": "mixed"
+  },
+  {
+    "iteration": 6,
+    "label": "P3 — page-relative text ceiling + interior-ink container test",
+    "at": "2026-08-02T20:02:44.818Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.8547544062799645,
+        "geometry": 0.8430610956036927,
+        "order": 0.9956709956709957,
+        "coverage": 0.6666666666666666,
+        "componentAccuracy": 0.8181818181818182,
+        "precision": 0.5641025641025641,
+        "recall": 0.6666666666666666,
+        "f1": 0.611111111111111,
+        "falsePositives": 17,
+        "falseNegatives": 11,
+        "detected": 39,
+        "annotated": 33,
+        "correct": 18,
+        "ms": 388
+      }
+    },
+    "real": {
+      "fidelity": 0.8547544062799645,
+      "geometry": 0.8430610956036927,
+      "order": 0.9956709956709957,
+      "coverage": 0.6666666666666666,
+      "componentAccuracy": 0.8181818181818182,
+      "precision": 0.5641025641025641,
+      "recall": 0.6666666666666666,
+      "f1": 0.611111111111111,
+      "falsePositives": 17,
+      "falseNegatives": 11,
+      "detected": 39,
+      "annotated": 33,
+      "correct": 18,
+      "ms": 388
+    },
+    "synthetic": {
+      "fidelity": 0.8708667608723576,
+      "f1": 0.8209930229936222,
+      "componentAccuracy": 0.8795639083139085,
+      "coverage": 0.8101620370370367,
+      "ms": 260.75
+    },
+    "gate": "regressed"
+  },
+  {
+    "iteration": 7,
+    "label": "P3 — glyph-sized interior-ink exception + page-relative ceiling",
+    "at": "2026-08-02T20:04:13.803Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.8700047051616371,
+        "geometry": 0.8439472358754557,
+        "order": 1,
+        "coverage": 0.7575757575757576,
+        "componentAccuracy": 0.84,
+        "precision": 0.5952380952380952,
+        "recall": 0.7575757575757576,
+        "f1": 0.6666666666666667,
+        "falsePositives": 17,
+        "falseNegatives": 8,
+        "detected": 42,
+        "annotated": 33,
+        "correct": 21,
+        "ms": 394
+      }
+    },
+    "real": {
+      "fidelity": 0.8700047051616371,
+      "geometry": 0.8439472358754557,
+      "order": 1,
+      "coverage": 0.7575757575757576,
+      "componentAccuracy": 0.84,
+      "precision": 0.5952380952380952,
+      "recall": 0.7575757575757576,
+      "f1": 0.6666666666666667,
+      "falsePositives": 17,
+      "falseNegatives": 8,
+      "detected": 42,
+      "annotated": 33,
+      "correct": 21,
+      "ms": 394
+    },
+    "synthetic": {
+      "fidelity": 0.8702419776145319,
+      "f1": 0.8209930229936222,
+      "componentAccuracy": 0.8795639083139085,
+      "coverage": 0.8101620370370367,
+      "ms": 264.55
+    },
+    "gate": "improved"
+  },
+  {
+    "iteration": 8,
+    "label": "revert P3 — restore the best state",
+    "at": "2026-08-02T20:05:09.193Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9079553332785334,
+        "geometry": 0.8693194948581617,
+        "order": 1,
+        "coverage": 0.9090909090909091,
+        "componentAccuracy": 0.7666666666666667,
+        "precision": 0.5660377358490566,
+        "recall": 0.9090909090909091,
+        "f1": 0.6976744186046512,
+        "falsePositives": 23,
+        "falseNegatives": 3,
+        "detected": 53,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 399
+      }
+    },
+    "real": {
+      "fidelity": 0.9079553332785334,
+      "geometry": 0.8693194948581617,
+      "order": 1,
+      "coverage": 0.9090909090909091,
+      "componentAccuracy": 0.7666666666666667,
+      "precision": 0.5660377358490566,
+      "recall": 0.9090909090909091,
+      "f1": 0.6976744186046512,
+      "falsePositives": 23,
+      "falseNegatives": 3,
+      "detected": 53,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 399
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 269.26666666666665
+    },
+    "gate": "mixed"
   }
 ]

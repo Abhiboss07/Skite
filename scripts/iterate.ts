@@ -166,7 +166,21 @@ if (!skipSynthetic) {
 /* ── append and judge ──────────────────────────────────────────────── */
 
 const history: Row[] = existsSync(logPath) ? JSON.parse(readFileSync(logPath, "utf8")) : [];
-const previous = history[history.length - 1] ?? null;
+
+/**
+ * The row to judge against: the best F1 recorded so far, not the last one.
+ *
+ * Comparing with the previous row is wrong the moment a change is reverted or a
+ * bad iteration is recorded. At iteration 7 the previous row was itself a
+ * regression, so a result well below the project's best F1 was reported as an
+ * improvement. "Better than the last thing I tried" is not the bar; "better
+ * than the best we have had" is.
+ */
+const best = history.reduce<Row | null>(
+  (top, row) => (top === null || row.real.f1 > top.real.f1 ? row : top),
+  null,
+);
+const previous = best;
 
 // A hair of slack, so floating-point noise is not reported as a change.
 const EPS = 0.0005;
@@ -202,6 +216,7 @@ const delta = (now: number, before: number | undefined) => {
 };
 
 console.log(`\niteration ${row.iteration} — ${label}`);
+console.log(previous ? `compared against iteration ${previous.iteration} (best F1 so far)` : "first run");
 console.log("─".repeat(64));
 const rows: [string, keyof Metrics][] = [
   ["F1", "f1"],
