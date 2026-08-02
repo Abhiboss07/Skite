@@ -3,6 +3,25 @@
 /* Class-based dark mode driven by next-themes */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Layout utilities used by generated components.
+ *
+ * The Studio's live preview renders a component tree whose class names are
+ * built at run time — `grid-cols-${columns}`, `gap-${spacing(gap)}` — from
+ * geometry measured in the uploaded sketch. Tailwind discovers classes by
+ * scanning source text, so a name that only exists once a sketch has been
+ * measured is invisible to it and the preview would silently lose its layout.
+ *
+ * The ranges are bounded by the emitter itself: it clamps column counts and
+ * spans to 12, and gaps are quantised to the sketch's base unit and capped well
+ * inside this range. This affects only the in-app preview — exported code is
+ * standalone and compiled by whatever project it lands in.
+ */
+@source inline("grid-cols-{1..12}");
+@source inline("md:grid-cols-{1..12}");
+@source inline("md:col-span-{1..12}");
+@source inline("gap-{0..48}");
+
 /* ==========================================================================
    SKITE DESIGN TOKENS
    Identity: "The Redraw" — every surface lives between SKETCH and REALITY.
