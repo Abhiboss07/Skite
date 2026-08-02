@@ -1,0 +1,90 @@
+[
+  {
+    "iteration": 0,
+    "label": "baseline — before any 2C change",
+    "at": "2026-08-02T19:55:30.419Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.8526102550646597,
+        "geometry": 0.8376837584410995,
+        "order": 1,
+        "coverage": 0.6666666666666666,
+        "componentAccuracy": 0.8181818181818182,
+        "precision": 0.4489795918367347,
+        "recall": 0.6666666666666666,
+        "f1": 0.5365853658536586,
+        "falsePositives": 27,
+        "falseNegatives": 11,
+        "detected": 49,
+        "annotated": 33,
+        "correct": 18,
+        "ms": 386
+      }
+    },
+    "real": {
+      "fidelity": 0.8526102550646597,
+      "geometry": 0.8376837584410995,
+      "order": 1,
+      "coverage": 0.6666666666666666,
+      "componentAccuracy": 0.8181818181818182,
+      "precision": 0.4489795918367347,
+      "recall": 0.6666666666666666,
+      "f1": 0.5365853658536586,
+      "falsePositives": 27,
+      "falseNegatives": 11,
+      "detected": 49,
+      "annotated": 33,
+      "correct": 18,
+      "ms": 386
+    },
+    "synthetic": null,
+    "gate": "baseline"
+  },
+  {
+    "iteration": 1,
+    "label": "P1 — projection-profile frame decomposition",
+    "at": "2026-08-02T19:55:46.978Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9027195261234285,
+        "geometry": 0.8681689071754113,
+        "order": 1,
+        "coverage": 0.8787878787878788,
+        "componentAccuracy": 0.7931034482758621,
+        "precision": 0.453125,
+        "recall": 0.8787878787878788,
+        "f1": 0.5979381443298969,
+        "falsePositives": 35,
+        "falseNegatives": 4,
+        "detected": 64,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 393
+      }
+    },
+    "real": {
+      "fidelity": 0.9027195261234285,
+      "geometry": 0.8681689071754113,
+      "order": 1,
+      "coverage": 0.8787878787878788,
+      "componentAccuracy": 0.7931034482758621,
+      "precision": 0.453125,
+      "recall": 0.8787878787878788,
+      "f1": 0.5979381443298969,
+      "falsePositives": 35,
+      "falseNegatives": 4,
+      "detected": 64,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 393
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 264.53333333333336
+    },
+    "gate": "improved"
+  }
+]

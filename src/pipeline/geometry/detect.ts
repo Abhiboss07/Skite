@@ -310,6 +310,214 @@ function mergeTextBlocks(regions: DetectedRegion[]): DetectedRegion[] {
   return [...rest, ...out];
 }
 
+/* ── frame decomposition ───────────────────────────────────────────── */
+
+/** A rectangle in mask pixels. */
+type Cell = { x: number; y: number; w: number; h: number };
+
+/**
+ * Rows (or columns) of a box that are almost entirely ink — a ruled separator.
+ *
+ * Returns the *centre* of each run of such lines, so a 4px-thick rule yields one
+ * cut rather than four. `along` is the axis being scanned: "row" counts ink
+ * across each row, "column" down each column.
+ */
+function separators(
+  mask: Uint8Array,
+  width: number,
+  box: Cell,
+  along: "row" | "column",
+  /** Fraction of the span that must be ink to count as a rule. */
+  ratio: number,
+): { start: number; end: number }[] {
+  const outer = along === "row" ? box.h : box.w;
+  const span = along === "row" ? box.w : box.h;
+  const need = span * ratio;
+
+  const runs: { start: number; end: number }[] = [];
+  let open = -1;
+
+  for (let i = 0; i < outer; i++) {
+    let ink = 0;
+    if (along === "row") {
+      const row = (box.y + i) * width;
+      for (let x = 0; x < span; x++) if (mask[row + box.x + x]) ink++;
+    } else {
+      for (let y = 0; y < span; y++) if (mask[(box.y + y) * width + box.x + i]) ink++;
+    }
+
+    if (ink >= need) {
+      if (open < 0) open = i;
+    } else if (open >= 0) {
+      runs.push({ start: open, end: i - 1 });
+      open = -1;
+    }
+  }
+  if (open >= 0) runs.push({ start: open, end: outer - 1 });
+
+  // A separator is a *line*. A run thicker than this is a filled band — a solid
+  // header, a dark image — and cutting there would slice content in half.
+  return runs.filter((r) => r.end - r.start < Math.max(6, outer * 0.02));
+}
+
+/** The gaps between separators: the content bands they delimit. */
+function bandsBetween(
+  seps: { start: number; end: number }[],
+  extent: number,
+  minSize: number,
+): { start: number; end: number }[] {
+  const bands: { start: number; end: number }[] = [];
+  let cursor = 0;
+  for (const sep of seps) {
+    if (sep.start - cursor >= minSize) bands.push({ start: cursor, end: sep.start - 1 });
+    cursor = sep.end + 1;
+  }
+  if (extent - cursor >= minSize) bands.push({ start: cursor, end: extent - 1 });
+  return bands;
+}
+
+/**
+ * Split a ruled frame into its cells by recursive projection cuts.
+ *
+ * This is the fix for the dominant real-world failure. A wireframe drawn as an
+ * outer border with full-width dividers is, to connected-component labelling,
+ * a single component — the rules touch the border, so the whole page skeleton
+ * is one blob and every section inside it is lost. Labelling is not wrong; the
+ * assumption that one drawn rectangle is one component is.
+ *
+ * So the frame is cut where it is ruled. Rows that are almost entirely ink are
+ * horizontal separators; the bands between them are sections. Each band is then
+ * cut vertically the same way, which recovers side-by-side cards. Two passes
+ * deep is enough for page layout and stops the recursion from shaving slivers
+ * off every nested box.
+ *
+ * Returns null when the component is not a ruled frame, which leaves every other
+ * kind of drawing exactly as it was.
+ */
+function decomposeFrame(mask: Uint8Array, width: number, box: Cell): Cell[] | null {
+  const MIN = 24;
+
+  const rowSeps = separators(mask, width, box, "row", 0.72);
+  if (rowSeps.length < 2) return null;
+
+  const rows = bandsBetween(rowSeps, box.h, MIN);
+  if (rows.length < 2) return null;
+
+  const cells: Cell[] = [];
+  for (const band of rows) {
+    const bandBox: Cell = { x: box.x, y: box.y + band.start, w: box.w, h: band.end - band.start + 1 };
+    const colSeps = separators(mask, width, bandBox, "column", 0.72);
+    const cols = colSeps.length ? bandsBetween(colSeps, bandBox.w, MIN) : [];
+
+    if (cols.length >= 2) {
+      for (const col of cols) {
+        cells.push({ x: bandBox.x + col.start, y: bandBox.y, w: col.end - col.start + 1, h: bandBox.h });
+      }
+    } else {
+      cells.push(bandBox);
+    }
+  }
+
+  return cells.length >= 2 ? cells : null;
+}
+
+/**
+ * Measure one candidate rectangle: ink, fill, interior evidence, primitive type.
+ *
+ * Shared by ordinary connected components and by cells recovered from a ruled
+ * frame, so a decomposed section is characterised identically to a drawn one.
+ */
+function measureRegion(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  cell: Cell,
+  tone: { grey: ArrayLike<number>; paperLevel: number } | undefined,
+): Omit<DetectedRegion, "id"> {
+  const { x, y, w, h } = cell;
+  const area = w * h;
+  const strokePixels = inkInBox(mask, width, x, y, w, h);
+  const fillRatio = strokePixels / area;
+
+  // Sample the central 50% of the box, not merely inside its outline.
+  // A 12% inset still catches stroke wobble bleeding inward, which made every
+  // empty container look like it had content. The centre is where an image
+  // placeholder's diagonals cross and where a hollow rectangle has nothing.
+  const insetX = Math.round(w * 0.25);
+  const insetY = Math.round(h * 0.25);
+  const iw = w - insetX * 2;
+  const ih = h - insetY * 2;
+  const interiorInk =
+    iw > 4 && ih > 4 ? inkInBox(mask, width, x + insetX, y + insetY, iw, ih) / (iw * ih) : 0;
+
+  // Toned fraction of the same interior, measured against the paper just
+  // outside this box rather than against a page-wide paper level.
+  //
+  // A global reference fails on photographs: the shading across a sheet of
+  // paper is often deeper than the tone of a filled rectangle, so every
+  // region in the dim half of the page reads as filled. Comparing against the
+  // immediate surroundings cancels the shading, because a gradient is
+  // essentially constant across the few dozen pixels that separate the two
+  // samples. What survives is what we actually want to know: is the inside of
+  // this box darker than the paper *around* it?
+  let interiorFill = 0;
+  if (tone && iw > 4 && ih > 4) {
+    const band = 24;
+    const ringStride = Math.max(1, Math.floor(Math.max(w, h) / 60));
+    const ring: number[] = [];
+    const x0 = Math.max(0, x - band);
+    const x1 = Math.min(width - 1, x + w + band);
+    const y0 = Math.max(0, y - band);
+    const y1 = Math.min(height - 1, y + h + band);
+
+    for (let yy = y0; yy <= y1; yy += ringStride) {
+    const inRows = yy > y && yy < y + h;
+    for (let xx = x0; xx <= x1; xx += ringStride) {
+      // Skip the box itself; sample only the band around it.
+      if (inRows && xx > x && xx < x + w) continue;
+      ring.push(tone.grey[yy * width + xx]);
+    }
+    }
+
+    if (ring.length > 16) {
+    ring.sort((a, b) => a - b);
+    // Median, not mean: a neighbouring stroke clipped by the band should not
+    // drag the paper estimate down.
+    const localPaper = ring[Math.floor(ring.length / 2)];
+    const threshold = localPaper - 18;
+    const stride = Math.max(1, Math.floor(Math.min(iw, ih) / 40));
+    let toned = 0;
+    let sampled = 0;
+    for (let yy = y + insetY; yy < y + insetY + ih; yy += stride) {
+      const row = yy * width;
+      for (let xx = x + insetX; xx < x + insetX + iw; xx += stride) {
+      if (tone.grey[row + xx] < threshold) toned++;
+      sampled++;
+      }
+    }
+    interiorFill = sampled ? toned / sampled : 0;
+    }
+  }
+
+  let primitive: Primitive;
+  // Note: a thin horizontal line is NOT treated as a rule. In wireframes a
+  // drawn line *is* the convention for a line of text, and digital wireframes
+  // draw it 1-2px thick. Classifying those as dividers loses every text block
+  // on clean inputs, so they fall through to the text branch below.
+  if (fillRatio < 0.34 && w > 42 && h > 26) {
+    // Mostly empty inside its own bounds: a hollow shape, i.e. a container.
+    primitive = "container";
+  } else if (h < 46) {
+    // Small and comparatively dense: writing.
+    primitive = "text";
+  } else {
+    primitive = "container";
+  }
+
+
+  return { x, y, w, h, strokePixels, fillRatio, interiorInk, interiorFill, lines: 1, primitive };
+}
+
 export function detect(
   mask: Uint8Array,
   width: number,
@@ -326,6 +534,8 @@ export function detect(
 
   const canvasArea = width * height;
   const regions: DetectedRegion[] = [];
+  /** Cells recovered from ruled frames, measured after the component loop. */
+  const frameCells: Cell[] = [];
 
   raw.forEach((c, index) => {
     const x = c.minX;
@@ -340,97 +550,27 @@ export function detect(
     // or a failed threshold, not a drawn region.
     if (area > canvasArea * 0.92) return;
 
-    const strokePixels = inkInBox(mask, width, x, y, w, h);
-    const fillRatio = strokePixels / area;
-
-    // Sample the central 50% of the box, not merely inside its outline.
-    // A 12% inset still catches stroke wobble bleeding inward, which made every
-    // empty container look like it had content. The centre is where an image
-    // placeholder's diagonals cross and where a hollow rectangle has nothing.
-    const insetX = Math.round(w * 0.25);
-    const insetY = Math.round(h * 0.25);
-    const iw = w - insetX * 2;
-    const ih = h - insetY * 2;
-    const interiorInk =
-      iw > 4 && ih > 4 ? inkInBox(mask, width, x + insetX, y + insetY, iw, ih) / (iw * ih) : 0;
-
-    // Toned fraction of the same interior, measured against the paper just
-    // outside this box rather than against a page-wide paper level.
-    //
-    // A global reference fails on photographs: the shading across a sheet of
-    // paper is often deeper than the tone of a filled rectangle, so every
-    // region in the dim half of the page reads as filled. Comparing against the
-    // immediate surroundings cancels the shading, because a gradient is
-    // essentially constant across the few dozen pixels that separate the two
-    // samples. What survives is what we actually want to know: is the inside of
-    // this box darker than the paper *around* it?
-    let interiorFill = 0;
-    if (tone && iw > 4 && ih > 4) {
-      const band = 24;
-      const ringStride = Math.max(1, Math.floor(Math.max(w, h) / 60));
-      const ring: number[] = [];
-      const x0 = Math.max(0, x - band);
-      const x1 = Math.min(width - 1, x + w + band);
-      const y0 = Math.max(0, y - band);
-      const y1 = Math.min(height - 1, y + h + band);
-
-      for (let yy = y0; yy <= y1; yy += ringStride) {
-        const inRows = yy > y && yy < y + h;
-        for (let xx = x0; xx <= x1; xx += ringStride) {
-          // Skip the box itself; sample only the band around it.
-          if (inRows && xx > x && xx < x + w) continue;
-          ring.push(tone.grey[yy * width + xx]);
-        }
-      }
-
-      if (ring.length > 16) {
-        ring.sort((a, b) => a - b);
-        // Median, not mean: a neighbouring stroke clipped by the band should not
-        // drag the paper estimate down.
-        const localPaper = ring[Math.floor(ring.length / 2)];
-        const threshold = localPaper - 18;
-        const stride = Math.max(1, Math.floor(Math.min(iw, ih) / 40));
-        let toned = 0;
-        let sampled = 0;
-        for (let yy = y + insetY; yy < y + insetY + ih; yy += stride) {
-          const row = yy * width;
-          for (let xx = x + insetX; xx < x + insetX + iw; xx += stride) {
-            if (tone.grey[row + xx] < threshold) toned++;
-            sampled++;
-          }
-        }
-        interiorFill = sampled ? toned / sampled : 0;
+    // A large, hollow component may be a ruled frame holding the entire page.
+    // Cutting it into its cells recovers the sections it would otherwise hide;
+    // the frame itself is then dropped, because the page outline is not a
+    // region anyone would annotate.
+    if (area > canvasArea * 0.25 && inkInBox(mask, width, x, y, w, h) / area < 0.2) {
+      const cells = decomposeFrame(mask, width, { x, y, w, h });
+      if (cells) {
+        frameCells.push(...cells);
+        return;
       }
     }
 
-    let primitive: Primitive;
-    // Note: a thin horizontal line is NOT treated as a rule. In wireframes a
-    // drawn line *is* the convention for a line of text, and digital wireframes
-    // draw it 1-2px thick. Classifying those as dividers loses every text block
-    // on clean inputs, so they fall through to the text branch below.
-    if (fillRatio < 0.34 && w > 42 && h > 26) {
-      // Mostly empty inside its own bounds: a hollow shape, i.e. a container.
-      primitive = "container";
-    } else if (h < 46) {
-      // Small and comparatively dense: writing.
-      primitive = "text";
-    } else {
-      primitive = "container";
-    }
+    const measured = measureRegion(mask, width, height, { x, y, w, h }, tone);
 
-    regions.push({
-      id: `r${index}`,
-      x,
-      y,
-      w,
-      h,
-      strokePixels,
-      fillRatio,
-      interiorInk,
-      interiorFill,
-      lines: 1,
-      primitive,
-    });
+    regions.push({ id: `r${index}`, ...measured });
+  });
+
+  // Cells recovered from a ruled frame, measured the same way. Added after the
+  // component loop so their ids never collide with component ids.
+  frameCells.forEach((cell, i) => {
+    regions.push({ id: `f${i}`, ...measureRegion(mask, width, height, cell, tone) });
   });
 
   const grouped = mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01)));
