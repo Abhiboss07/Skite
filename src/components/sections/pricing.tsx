@@ -27,8 +27,13 @@ export function Pricing({ standalone = false }: { standalone?: boolean }) {
       aria-labelledby="pricing-heading"
     >
       <div className="container-skite">
-        {standalone ? null : (
+        {standalone ? (
+          // The standalone page supplies its own <h1>, but the tier names are
+          // <h3>; without this the outline jumps h1 → h3.
+          <h2 id="pricing-heading" className="sr-only">Plans</h2>
+        ) : (
           <SectionHeading
+            titleId="pricing-heading"
             align="center"
             eyebrow="Pricing"
             title={

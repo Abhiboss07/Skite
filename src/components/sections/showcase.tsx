@@ -37,6 +37,7 @@ export function Showcase({ limit }: { limit?: number }) {
       <div className="container-skite">
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <SectionHeading
+            titleId="showcase-heading"
             eyebrow="Showcase"
             title={
               <>
@@ -107,7 +108,7 @@ export function Showcase({ limit }: { limit?: number }) {
                       <Badge size="sm" variant="outline" className="font-mono">
                         {item.source}
                       </Badge>
-                      <Badge size="sm" variant={item.accent === "aqua" ? "aqua" : item.accent === "violet" ? "violet" : "accent"} className="font-mono">
+                      <Badge size="sm" variant={item.accent} className="font-mono">
                         {item.duration}
                       </Badge>
                     </div>

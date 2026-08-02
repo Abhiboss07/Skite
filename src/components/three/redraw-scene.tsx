@@ -1,11 +1,22 @@
 "use client";
 
+/* eslint-disable react-hooks/immutability --
+ * This file drives a three.js scene. Every write flagged by this rule happens
+ * inside a useFrame callback, which is the render *loop*, not React render.
+ * Mutating clipping planes, transforms and material uniforms in place is the
+ * required pattern for three.js; reallocating those objects 60 times a second
+ * would churn the GC and force material recompiles. The rule has no way to
+ * distinguish a useFrame body from a component body, so it is disabled here
+ * rather than annotated at a dozen individual call sites.
+ */
+
 import { Environment, Float, Lightformer } from "@react-three/drei";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { usePrefersReducedMotion } from "@/hooks/use-media-query";
+import { seededRandom } from "@/lib/utils";
 
 /**
  * "The Redraw" in three dimensions.
@@ -226,10 +237,12 @@ function Motes({ count = 90 }: { count?: number }) {
 
   const geometry = useMemo(() => {
     const positions = new Float32Array(count * 3);
+    // Seeded rather than Math.random so the field is identical on every mount —
+    // the layout is art-directed, not a lottery, and it keeps this render pure.
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 14;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 9;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 8;
+      positions[i * 3] = (seededRandom(i * 3 + 1) - 0.5) * 14;
+      positions[i * 3 + 1] = (seededRandom(i * 3 + 2) - 0.5) * 9;
+      positions[i * 3 + 2] = (seededRandom(i * 3 + 3) - 0.5) * 8;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));

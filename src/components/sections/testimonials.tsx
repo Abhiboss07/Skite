@@ -1,7 +1,6 @@
 "use client";
 
 import { Marquee } from "@/components/motion/marquee";
-import { Reveal } from "@/components/motion/reveal";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Accent, SectionHeading } from "@/components/ui/section-heading";
 import { testimonials } from "@/lib/content";
@@ -25,6 +24,7 @@ export function Testimonials() {
 
       <div className="container-skite relative">
         <SectionHeading
+          titleId="testimonials-heading"
           align="center"
           eyebrow="Signal"
           title={

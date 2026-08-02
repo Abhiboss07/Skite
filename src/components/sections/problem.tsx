@@ -29,6 +29,7 @@ export function Problem() {
     <section className="section-y relative overflow-hidden" aria-labelledby="problem-heading">
       <div className="container-skite">
         <SectionHeading
+          titleId="problem-heading"
           align="center"
           eyebrow="The gap"
           title={

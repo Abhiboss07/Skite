@@ -33,11 +33,12 @@ const jetbrains = JetBrains_Mono({
 });
 
 /* The accent voice — one italic serif word inside a grotesque headline is the
-   SKITE typographic signature. */
+   SKITE typographic signature. Italic only: every use of this face is italic,
+   so shipping the roman would be a wasted font request. */
 const instrument = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
-  style: ["normal", "italic"],
+  style: "italic",
   variable: "--font-instrument",
   display: "swap",
 });

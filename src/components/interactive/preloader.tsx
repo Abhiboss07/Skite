@@ -32,6 +32,9 @@ export function Preloader() {
   useEffect(() => {
     if (reducedMotion) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
+    // sessionStorage is a browser-only API, so this decision cannot be made
+    // during render without desyncing hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActive(true);
     setReady(true);
   }, [reducedMotion]);

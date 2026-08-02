@@ -32,8 +32,10 @@ export function SiteHeader() {
     setHidden(latest > 420 && latest > previous && latest - previous > 4 && !openGroup);
   });
 
-  // Close every overlay on navigation.
+  // Close every overlay on navigation. Reacting to the committed pathname is
+  // the point — the menus must not survive a route change.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
     setOpenGroup(null);
   }, [pathname]);

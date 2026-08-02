@@ -45,13 +45,17 @@ export function TrustedBy() {
       <div className="container-skite mt-14">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
           {stats.map((stat, index) => (
+            // Reveal renders the <div> that groups each pair — the only element
+            // besides dt/dd a <dl> may contain. The term precedes the definition
+            // in the DOM as the spec requires; `order` flips them visually so the
+            // number still reads first.
             <Reveal
               key={stat.label}
               delay={index * 0.08}
               className="flex flex-col items-center gap-2 text-center"
             >
-              <dt className="sr-only">{stat.label}</dt>
-              <dd className="font-display text-[clamp(2rem,1.4rem+2vw,3rem)] leading-none font-semibold tracking-[-0.04em]">
+              <dt className="order-2 text-[0.8125rem] text-subtle">{stat.label}</dt>
+              <dd className="order-1 font-display text-[clamp(2rem,1.4rem+2vw,3rem)] leading-none font-semibold tracking-[-0.04em]">
                 <Counter
                   value={stat.value}
                   suffix={stat.suffix}
@@ -59,7 +63,6 @@ export function TrustedBy() {
                   className="text-brand-gradient"
                 />
               </dd>
-              <p className="text-[0.8125rem] text-subtle">{stat.label}</p>
             </Reveal>
           ))}
         </dl>

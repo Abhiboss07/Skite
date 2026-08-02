@@ -40,6 +40,8 @@ export function Counter({
     if (!inView) return;
 
     if (reducedMotion) {
+      // Skip the animation entirely and land on the final value.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplay(value);
       return;
     }

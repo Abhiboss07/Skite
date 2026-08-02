@@ -46,6 +46,7 @@ export function LiveDemo() {
     <section id="demo" className="section-y relative scroll-mt-24" aria-labelledby="demo-heading">
       <div className="container-skite">
         <SectionHeading
+          titleId="demo-heading"
           align="center"
           eyebrow="Live demo"
           title={

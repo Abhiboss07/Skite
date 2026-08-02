@@ -34,6 +34,9 @@ export function LazyRedrawScene({ className }: { className?: string }) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [idle, setIdle] = useState(false);
 
+  // WebGL support can only be probed in the browser, so it has to land after
+  // mount; there is no server-renderable answer to snapshot.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setWebgl(supportsWebGL()), []);
 
   // Wait for the main thread to settle before pulling in the 3D chunk, so the

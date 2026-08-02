@@ -35,6 +35,7 @@ export function Technology() {
 
       <div className="container-skite relative">
         <SectionHeading
+          titleId="tech-heading"
           eyebrow="Technology"
           title={
             <>
@@ -68,8 +69,10 @@ export function Technology() {
 
           <ol className="relative grid gap-8 lg:grid-cols-5 lg:gap-5">
             {pipelineStages.map((stage, index) => (
-              <Reveal key={stage.name} delay={index * 0.09} className="relative">
-                <li className="flex gap-5 lg:flex-col lg:gap-6">
+              // Reveal sits inside the <li>, never around it: an <ol> may only
+              // directly contain <li>, and wrapping breaks the list semantics.
+              <li key={stage.name} className="relative">
+                <Reveal delay={index * 0.09} className="flex gap-5 lg:flex-col lg:gap-6">
                   {/* Node */}
                   <div className="relative shrink-0">
                     <span
@@ -108,8 +111,8 @@ export function Technology() {
                       {stage.model}
                     </Badge>
                   </GlassCard>
-                </li>
-              </Reveal>
+                </Reveal>
+              </li>
             ))}
           </ol>
         </div>

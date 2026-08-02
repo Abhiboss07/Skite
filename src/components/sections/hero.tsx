@@ -225,7 +225,9 @@ function ScrollCue() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, delay: 1.6 }}
-      className="absolute inset-x-0 bottom-8 flex justify-center"
+      // Hidden on short viewports: on a phone the hero content already reaches
+      // the fold, and the cue collided with the trust line.
+      className="absolute inset-x-0 bottom-8 hidden justify-center md:flex"
     >
       <div className="flex flex-col items-center gap-3">
         <span className="font-mono text-[10px] tracking-[0.22em] text-subtle uppercase">

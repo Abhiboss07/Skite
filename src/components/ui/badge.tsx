@@ -7,17 +7,23 @@ const badgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border font-medium whitespace-nowrap transition-colors",
   {
     variants: {
+      // Text tones are theme-aware: the 300/400 shades read well on the dark
+      // surface but fail contrast on the light one, so light mode steps down to
+      // the 600/700 shades against the same tinted background.
       variant: {
         default: "border-border bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)] text-muted",
         accent:
-          "border-electric-400/30 bg-[color-mix(in_oklab,var(--color-electric-500)_14%,transparent)] text-electric-300",
-        aqua: "border-aqua-400/30 bg-[color-mix(in_oklab,var(--color-aqua-400)_14%,transparent)] text-aqua-300",
+          "border-electric-400/30 bg-[color-mix(in_oklab,var(--color-electric-500)_14%,transparent)] text-electric-700 dark:text-electric-300",
+        /** Alias of `accent`, so content can name tones electric/aqua/violet consistently. */
+        electric:
+          "border-electric-400/30 bg-[color-mix(in_oklab,var(--color-electric-500)_14%,transparent)] text-electric-700 dark:text-electric-300",
+        aqua: "border-aqua-400/30 bg-[color-mix(in_oklab,var(--color-aqua-400)_14%,transparent)] text-aqua-700 dark:text-aqua-300",
         violet:
-          "border-violet-400/30 bg-[color-mix(in_oklab,var(--color-violet-500)_16%,transparent)] text-violet-300",
+          "border-violet-400/30 bg-[color-mix(in_oklab,var(--color-violet-500)_16%,transparent)] text-violet-700 dark:text-violet-300",
         success:
-          "border-success-400/30 bg-[color-mix(in_oklab,var(--color-success-500)_14%,transparent)] text-success-400",
+          "border-success-400/30 bg-[color-mix(in_oklab,var(--color-success-500)_14%,transparent)] text-success-600 dark:text-success-400",
         warning:
-          "border-warning-400/30 bg-[color-mix(in_oklab,var(--color-warning-500)_14%,transparent)] text-warning-400",
+          "border-warning-400/30 bg-[color-mix(in_oklab,var(--color-warning-500)_14%,transparent)] text-warning-600 dark:text-warning-400",
         outline: "border-border-strong text-foreground",
       },
       size: {

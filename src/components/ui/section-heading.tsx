@@ -45,6 +45,8 @@ type SectionHeadingProps = {
   leadClassName?: string;
   /** Heading level — keeps the document outline correct per page. */
   as?: "h1" | "h2" | "h3";
+  /** Set when a parent <section> names itself via aria-labelledby. */
+  titleId?: string;
   children?: ReactNode;
 };
 
@@ -61,6 +63,7 @@ export function SectionHeading({
   titleClassName,
   leadClassName,
   as: Tag = "h2",
+  titleId,
   children,
 }: SectionHeadingProps) {
   return (
@@ -79,7 +82,9 @@ export function SectionHeading({
       ) : null}
 
       <Reveal delay={0.06}>
-        <Tag className={cn("text-title text-balance", titleClassName)}>{title}</Tag>
+        <Tag id={titleId} className={cn("text-title text-balance", titleClassName)}>
+          {title}
+        </Tag>
       </Reveal>
 
       {lead ? (

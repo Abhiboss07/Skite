@@ -271,7 +271,9 @@
   --surface-elevated: #ffffff;
   --foreground: #0b1023;
   --foreground-muted: #4d5566;
-  --foreground-subtle: #6f778a;
+  /* 4.8:1 on --background. The previous #6f778a measured 4.24:1 and failed
+     WCAG AA for the small mono labels this colour is used for. */
+  --foreground-subtle: #666e80;
   --border: rgb(11 16 35 / 0.1);
   --border-strong: rgb(11 16 35 / 0.18);
   --ring: #2e6bff;
@@ -303,7 +305,9 @@
   --surface-elevated: #111834;
   --foreground: #eef1f8;
   --foreground-muted: #9aa1b1;
-  --foreground-subtle: #6f778a;
+  /* 5.0:1 on --background. The previous #6f778a measured 4.31:1 and failed
+     WCAG AA for the small mono labels this colour is used for. */
+  --foreground-subtle: #7d8598;
   --border: rgb(255 255 255 / 0.09);
   --border-strong: rgb(255 255 255 / 0.16);
   --ring: #6690ff;

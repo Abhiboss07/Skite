@@ -27,6 +27,7 @@ export function Features() {
 
       <div className="container-skite relative">
         <SectionHeading
+          titleId="features-heading"
           eyebrow="Capabilities"
           title={
             <>
@@ -80,6 +81,10 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
             "group-hover/card:shadow-[0_0_28px_-6px_rgba(46,107,255,0.7)]",
           )}
         >
+          {/* Looked up, not created: getIcon returns a reference out of a
+              module-level map, so identity is stable across renders and there is
+              no remount risk. The rule cannot see through the indirection. */}
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <Icon className="size-5" strokeWidth={1.6} />
         </span>
 

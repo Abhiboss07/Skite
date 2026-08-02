@@ -23,7 +23,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
 
   // Theme is unknowable on the server; render a stable placeholder until mount
-  // to avoid a hydration mismatch on the icon.
+  // to avoid a hydration mismatch on the icon. A single mount flag is exactly
+  // the case this rule cannot express — there is no external system to sync to.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   const isDark = resolvedTheme === "dark";

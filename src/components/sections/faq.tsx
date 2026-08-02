@@ -24,6 +24,7 @@ export function Faq({ limit }: { limit?: number }) {
         <div className="grid gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
           <div className="lg:sticky lg:top-32 lg:self-start">
             <SectionHeading
+              titleId="faq-heading"
               eyebrow="Questions"
               title={
                 <>

@@ -46,6 +46,9 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       autoRaf: false,
     });
 
+    // Lenis is exactly the "external system" this rule exists to allow; the
+    // instance must be published to context so children can drive scrolling.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLenis(instance);
 
     const onScroll = () => ScrollTrigger.update();
