@@ -556,5 +556,99 @@
       "ms": 265.81666666666666
     },
     "gate": "improved"
+  },
+  {
+    "iteration": 12,
+    "label": "S2.3 — merge glyph runs into words",
+    "at": "2026-08-02T20:18:54.922Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9059370579095606,
+        "geometry": 0.8583799450007829,
+        "order": 1,
+        "coverage": 0.9393939393939394,
+        "componentAccuracy": 0.8709677419354839,
+        "precision": 0.8378378378378378,
+        "recall": 0.9393939393939394,
+        "f1": 0.8857142857142858,
+        "falsePositives": 6,
+        "falseNegatives": 2,
+        "detected": 37,
+        "annotated": 33,
+        "correct": 27,
+        "ms": 404
+      }
+    },
+    "real": {
+      "fidelity": 0.9059370579095606,
+      "geometry": 0.8583799450007829,
+      "order": 1,
+      "coverage": 0.9393939393939394,
+      "componentAccuracy": 0.8709677419354839,
+      "precision": 0.8378378378378378,
+      "recall": 0.9393939393939394,
+      "f1": 0.8857142857142858,
+      "falsePositives": 6,
+      "falseNegatives": 2,
+      "detected": 37,
+      "annotated": 33,
+      "correct": 27,
+      "ms": 404
+    },
+    "synthetic": {
+      "fidelity": 0.8556586923987379,
+      "f1": 0.7819446133491398,
+      "componentAccuracy": 0.8541406278906276,
+      "coverage": 0.7584069865319862,
+      "ms": 265.31666666666666
+    },
+    "gate": "improved"
+  },
+  {
+    "iteration": 13,
+    "label": "S2.3 — glyph runs, aspect-bounded",
+    "at": "2026-08-02T20:19:53.352Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9059370579095606,
+        "geometry": 0.8583799450007829,
+        "order": 1,
+        "coverage": 0.9393939393939394,
+        "componentAccuracy": 0.8709677419354839,
+        "precision": 0.8378378378378378,
+        "recall": 0.9393939393939394,
+        "f1": 0.8857142857142858,
+        "falsePositives": 6,
+        "falseNegatives": 2,
+        "detected": 37,
+        "annotated": 33,
+        "correct": 27,
+        "ms": 397
+      }
+    },
+    "real": {
+      "fidelity": 0.9059370579095606,
+      "geometry": 0.8583799450007829,
+      "order": 1,
+      "coverage": 0.9393939393939394,
+      "componentAccuracy": 0.8709677419354839,
+      "precision": 0.8378378378378378,
+      "recall": 0.9393939393939394,
+      "f1": 0.8857142857142858,
+      "falsePositives": 6,
+      "falseNegatives": 2,
+      "detected": 37,
+      "annotated": 33,
+      "correct": 27,
+      "ms": 397
+    },
+    "synthetic": {
+      "fidelity": 0.8690825376888459,
+      "f1": 0.8226723420642456,
+      "componentAccuracy": 0.876865495615496,
+      "coverage": 0.8112037037037034,
+      "ms": 263.93333333333334
+    },
+    "gate": "mixed"
   }
 ]

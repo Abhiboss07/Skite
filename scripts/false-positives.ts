@@ -4,12 +4,18 @@ import { basename, dirname, join } from "node:path";
 import { runPipeline } from "../src/pipeline/run.ts";
 import { scoreFidelity, type ScorableNode } from "../src/pipeline/fidelity/score.ts";
 
+type Box = { x: number; y: number; w: number; h: number };
+type TruthNode = { id: string; role: string; box: Box };
+
 const input = process.argv[2] ?? "Test Images/website-wireframe-services.jpg";
 const slug = basename(input).replace(/\.[^.]+$/, "");
 const result = await runPipeline(readFileSync(input), { classifier: "heuristic", sourceKind: "wireframe" });
-const truth = JSON.parse(readFileSync(join(dirname(input), `${slug}.truth.json`), "utf8"));
+const truth = JSON.parse(readFileSync(join(dirname(input), `${slug}.truth.json`), "utf8")) as {
+  canvas: { w: number; h: number };
+  nodes: TruthNode[];
+};
 
-const reference: ScorableNode[] = truth.nodes.map((n: any, i: number) => ({ id: n.id, role: n.role, box: n.box, order: i }));
+const reference: ScorableNode[] = truth.nodes.map((n: TruthNode, i: number) => ({ id: n.id, role: n.role, box: n.box, order: i }));
 const produced: ScorableNode[] = result.ir.nodes.map((n) => ({ id: n.id, role: n.role, box: n.box, order: n.order }));
 const s = scoreFidelity({ nodes: reference, canvas: truth.canvas }, { nodes: produced, canvas: result.ir.canvas });
 const matched = new Set(s.perNode.filter((p) => p.producedId).map((p) => p.producedId!));
@@ -18,7 +24,7 @@ const fps = result.ir.nodes.filter((n) => !matched.has(n.id));
 console.log(`${fps.length} false positives of ${result.ir.nodes.length} detected (${s.referenceCount} annotated)\n`);
 
 // Best IoU against any ground-truth box, to tell "near miss" from "invented".
-const iou = (a: any, b: any) => {
+const iou = (a: Box, b: Box) => {
   const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
   const x2 = Math.min(a.x + a.w, b.x + b.w), y2 = Math.min(a.y + a.h, b.y + b.h);
   const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);

@@ -175,6 +175,91 @@ function inkInBox(
  * are one line of text, and a heading drawn as two squiggles should become one
  * text node rather than two.
  */
+/**
+ * Join adjacent glyphs into the word they spell.
+ *
+ * Letters do not touch, so component labelling returns one region per letter —
+ * eight regions for "HEADLINE", each of which the classifier then read as an
+ * image placeholder because a solid glyph has a solid middle.
+ *
+ * The earlier attempt at this changed what `container` means, by adding an
+ * interior-ink test to the primitive rule. That reached into decisions about
+ * large regions too, retyped whole sections as text, and cost more recall than
+ * it gained — it was reverted. Merging first and classifying afterwards leaves
+ * the primitive rule alone: by the time it runs, the word is one region of
+ * ordinary text height.
+ *
+ * The discriminator against merging genuine neighbours — two cards, two images
+ * — is density. A glyph is solid; a drawn box is an outline around emptiness,
+ * so its ink covers a few percent of its area. Cards side by side are never
+ * both dense, so they are never joined.
+ */
+function mergeGlyphRuns(regions: DetectedRegion[]): DetectedRegion[] {
+  const DENSE = 0.15;
+
+  // Glyphs are roughly as tall as they are wide. The aspect bound is what
+  // stops this from joining two image placeholders that happen to sit close
+  // together in adjacent cards — they are wide, and merging them cost 1.4
+  // points of synthetic fidelity when the density test ran alone.
+  const dense = regions.filter(
+    (r) => r.primitive !== "text" && r.fillRatio >= DENSE && r.lines <= 1 && r.w <= r.h * 1.6,
+  );
+  if (dense.length < 2) return regions;
+
+  const byX = [...dense].sort((a, b) => a.x - b.x);
+  const used = new Set<DetectedRegion>();
+  const merged: DetectedRegion[] = [];
+
+  for (const seed of byX) {
+    if (used.has(seed)) continue;
+    const run = [seed];
+    let right = seed.x + seed.w;
+
+    for (const candidate of byX) {
+      if (used.has(candidate) || candidate === seed) continue;
+      const last = run[run.length - 1];
+
+      const gap = candidate.x - right;
+      const sameHeight = Math.abs(candidate.h - last.h) <= Math.max(6, last.h * 0.35);
+      const overlap =
+        Math.min(candidate.y + candidate.h, last.y + last.h) - Math.max(candidate.y, last.y);
+      const sharesBaseline = overlap > Math.min(candidate.h, last.h) * 0.6;
+      // Letter spacing is a fraction of the letter height. Anything wider is
+      // the gap between two things, not between two letters of one word.
+      const adjacent = gap >= -2 && gap <= last.h * 0.5;
+
+      if (sameHeight && sharesBaseline && adjacent) {
+        run.push(candidate);
+        right = candidate.x + candidate.w;
+      }
+    }
+
+    if (run.length < 2) continue;
+    for (const r of run) used.add(r);
+
+    const x = Math.min(...run.map((r) => r.x));
+    const y = Math.min(...run.map((r) => r.y));
+    const w = Math.max(...run.map((r) => r.x + r.w)) - x;
+    const h = Math.max(...run.map((r) => r.y + r.h)) - y;
+    const strokePixels = run.reduce((sum, r) => sum + r.strokePixels, 0);
+
+    merged.push({
+      id: `w${merged.length}`,
+      x, y, w, h,
+      strokePixels,
+      fillRatio: strokePixels / (w * h),
+      interiorInk: Math.max(...run.map((r) => r.interiorInk)),
+      interiorFill: Math.max(...run.map((r) => r.interiorFill)),
+      lines: 1,
+      // A word is text, whatever its size. This is the whole point of merging
+      // before classification rather than after.
+      primitive: "text",
+    });
+  }
+
+  return merged.length ? [...regions.filter((r) => !used.has(r)), ...merged] : regions;
+}
+
 function mergeTextRuns(regions: DetectedRegion[], baseGap: number): DetectedRegion[] {
   const text = regions.filter((r) => r.primitive === "text");
   const rest = regions.filter((r) => r.primitive !== "text");
@@ -771,7 +856,7 @@ export function detect(
 
   const grouped = suppressDuplicates(
     groupFragments(
-      mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01))),
+      mergeTextBlocks(mergeTextRuns(mergeGlyphRuns(regions), Math.max(6, width * 0.01))),
       width,
       height,
     ),
