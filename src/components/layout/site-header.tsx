@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, Menu, Search, X } from "lucide-react";
@@ -14,23 +14,58 @@ import { EASE } from "@/lib/motion";
 import { flatNav, primaryNav } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
+/**
+ * Where the header gains its glass background, and where it loses it again.
+ *
+ * Two thresholds rather than one. With a single value, a scroll that settles
+ * near it — which Lenis's easing makes common, since it decelerates over the
+ * last few pixels — toggles the background on and off repeatedly. The dead band
+ * between these two makes that impossible.
+ */
+const CONDENSE_AT = 24;
+const EXPAND_AT = 12;
+
 export function SiteHeader() {
   const pathname = usePathname();
   const { setOpen: setPaletteOpen } = useCommandPalette();
-  const { scrollY } = useScroll();
 
   const [condensed, setCondensed] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Condense past the fold; hide entirely when scrolling down at speed, so the
-  // header never covers content the visitor is actively reading.
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = scrollY.getPrevious() ?? 0;
-    setCondensed(latest > 24);
-    setHidden(latest > 420 && latest > previous && latest - previous > 4 && !openGroup);
-  });
+  /**
+   * The header is fixed and stays fixed. It never translates, never hides, and
+   * never animates its position — the only thing scroll changes is whether the
+   * glass background is visible.
+   *
+   * It previously slid out of view when you scrolled down and slid back on any
+   * upward scroll. That is a real pattern, but with smooth scrolling it reads as
+   * the bar drifting away and then snapping back, and it put an animating
+   * `transform` on the element for the duration. This reads its own state
+   * inside a rAF callback rather than subscribing to a scroll motion value, so
+   * no React render is scheduled while the threshold is not being crossed.
+   */
+  useEffect(() => {
+    let frame = 0;
+
+    const read = () => {
+      frame = 0;
+      const y = window.scrollY;
+      setCondensed((previous) => (previous ? y > EXPAND_AT : y > CONDENSE_AT));
+    };
+
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(read);
+    };
+
+    read();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
 
   // Close every overlay on navigation. Reacting to the committed pathname is
   // the point — the menus must not survive a route change.
@@ -52,22 +87,30 @@ export function SiteHeader() {
 
   return (
     <>
-      <motion.header
+      {/* A plain element, deliberately. Any transform here — even an idle one
+          left behind by an animation — makes this a containing block for its
+          own fixed positioning and invites subpixel jitter under the backdrop
+          filter. Nothing about the header's position is animated. */}
+      <header
         className="fixed inset-x-0 top-0 z-[100]"
-        animate={{ y: hidden ? "-110%" : "0%" }}
-        transition={{ duration: 0.45, ease: EASE.out }}
         onMouseLeave={() => setOpenGroup(null)}
       >
         <div className="container-skite">
-          <div
-            className={cn(
-              "mt-3 flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 lg:px-4",
-              "transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500",
-              condensed
-                ? "glass glass-sheen border-border shadow-card"
-                : "border border-transparent bg-transparent",
-            )}
-          >
+          <div className="relative isolate mt-3 flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 lg:px-4">
+            {/* The glass sits on its own layer and cross-fades.
+                `backdrop-filter` is not a cheap property to transition — the
+                browser re-rasterises the blur at every intermediate radius, and
+                the result flickers on the first frames. Compositing a finished
+                blur in and out via opacity avoids that entirely, and the blur
+                radius itself never changes. */}
+            <div
+              aria-hidden
+              className={cn(
+                "glass glass-sheen pointer-events-none absolute inset-0 -z-10 rounded-lg border-border shadow-card",
+                "transition-opacity duration-500 ease-out",
+                condensed ? "opacity-100" : "opacity-0",
+              )}
+            />
             <Link
               href="/"
               className="shrink-0 rounded-sm transition-opacity hover:opacity-80"
@@ -202,7 +245,7 @@ export function SiteHeader() {
             </motion.div>
           ) : null}
         </AnimatePresence>
-      </motion.header>
+      </header>
 
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} isActive={isActive} />
     </>
