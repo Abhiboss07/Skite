@@ -17,7 +17,7 @@ browser and uploads nothing.
 | Framework | Next.js 16 (App Router, Turbopack), React 19 |
 | Language | TypeScript, `strict` |
 | Styling | Tailwind CSS v4 (CSS-first `@theme` tokens) |
-| Animation | Motion (Framer Motion 12), GSAP + ScrollTrigger, Lenis |
+| Animation | Motion (Framer Motion 12), Lenis, CSS keyframes above the fold |
 | 3D | three.js, React Three Fiber, drei |
 | UI primitives | Radix UI, cmdk, lucide-react |
 | Theming | next-themes (dark default, View Transitions wipe) |
@@ -43,7 +43,7 @@ depth). Interactions are the transition between them.
   leaving rendered facets behind and unresolved wireframe ahead.
 - Showcase tiles show the render at rest and the originating sketch on hover.
 
-Typography pairs **Bricolage Grotesque** (display, optical-size axis) with
+Typography pairs **Bricolage Grotesque** (display) with
 **Inter** (body), **JetBrains Mono** (labels) and one **Instrument Serif
 italic** accent word per headline — that pairing is the headline signature.
 
@@ -77,7 +77,11 @@ without touching components.
 - **Motion tokens live in `lib/motion.ts`.** Entrances are expo-out, exits are
   quick, anything cursor-driven is a spring. Don't inline new curves.
 - **Every animation is reduced-motion aware.** Primitives degrade to static
-  markup rather than animating faster.
+  markup rather than animating faster. Verified: 0 running animations under
+  `prefers-reduced-motion`.
+- **Above the fold, animate with CSS, not JS.** Motion serialises `initial` into
+  the server HTML, so a JS entrance ships as `opacity: 0` and blocks LCP until
+  hydration. Use `<Rise>` / `<WordRise>` there and `<Reveal>` below the fold.
 - **Sections are named landmarks.** Pass `titleId` to `SectionHeading` and
   reference it from the section's `aria-labelledby`.
 - **The feature bento spans must total a multiple of 3** or the grid leaves a
