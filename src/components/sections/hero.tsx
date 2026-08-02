@@ -221,14 +221,14 @@ function FloatingSketch({
 }
 
 function ScrollCue() {
+  const reducedMotion = usePrefersReducedMotion();
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 1, delay: 1.6 }}
+    <div
       // Hidden on short viewports: on a phone the hero content already reaches
       // the fold, and the cue collided with the trust line.
-      className="absolute inset-x-0 bottom-8 hidden justify-center md:flex"
+      className="enter absolute inset-x-0 bottom-8 hidden justify-center md:flex"
+      style={{ "--enter-delay": "900ms" } as React.CSSProperties}
     >
       <div className="flex flex-col items-center gap-3">
         <span className="font-mono text-[10px] tracking-[0.22em] text-subtle uppercase">
@@ -236,14 +236,19 @@ function ScrollCue() {
         </span>
         <div className="relative h-12 w-px overflow-hidden bg-border">
           {/* A single travelling highlight reads as motion far better than a
-              bouncing arrow, and never competes with the CTAs above it. */}
-          <motion.div
-            className="absolute inset-x-0 h-5 bg-[linear-gradient(180deg,transparent,var(--color-electric-400),transparent)]"
-            animate={{ y: ["-100%", "340%"] }}
-            transition={{ duration: 2.4, ease: EASE.inOut, repeat: Infinity, repeatDelay: 0.4 }}
-          />
+              bouncing arrow, and never competes with the CTAs above it.
+              Omitted entirely under reduced motion — an indefinitely looping
+              element is exactly what that preference is asking us not to do,
+              and the rail alone still reads as an affordance. */}
+          {reducedMotion ? null : (
+            <motion.div
+              className="absolute inset-x-0 h-5 bg-[linear-gradient(180deg,transparent,var(--color-electric-400),transparent)]"
+              animate={{ y: ["-100%", "340%"] }}
+              transition={{ duration: 2.4, ease: EASE.inOut, repeat: Infinity, repeatDelay: 0.4 }}
+            />
+          )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

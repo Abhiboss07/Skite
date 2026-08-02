@@ -12,7 +12,7 @@
 
 import { Environment, Float, Lightformer } from "@react-three/drei";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { usePrefersReducedMotion } from "@/hooks/use-media-query";
@@ -281,9 +281,26 @@ function Rig({ pointer }: { pointer: React.RefObject<THREE.Vector2> }) {
 export function RedrawScene({ className }: { className?: string }) {
   const reducedMotion = usePrefersReducedMotion();
   const pointer = useRef(new THREE.Vector2(0, 0));
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(true);
+
+  // Stop rendering entirely once the hero has scrolled away. A WebGL canvas
+  // left running costs a full GPU frame every 16ms for something nobody can
+  // see — on a laptop that is measurable battery, and on a weak GPU it slows
+  // down the rest of the page.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className={className} aria-hidden>
+    <div ref={hostRef} className={className} aria-hidden>
       <Canvas
         // Cap DPR: above ~1.75 the extra pixels are invisible here but the
         // fragment cost on high-DPI laptops is very real.
@@ -294,8 +311,9 @@ export function RedrawScene({ className }: { className?: string }) {
           // Required for per-material clippingPlanes, which drive the scan.
           gl.localClippingEnabled = true;
         }}
-        // Under reduced motion, render a single frame and stop.
-        frameloop={reducedMotion ? "demand" : "always"}
+        // Reduced motion renders a single frame and stops; scrolling the hero
+        // out of view stops it too, and it resumes on the way back.
+        frameloop={reducedMotion || !onScreen ? "demand" : "always"}
       >
         {/* No <color attach="background"> here on purpose: setting scene.background
             makes the canvas opaque and would paint a rectangle over the page. The
@@ -307,8 +325,11 @@ export function RedrawScene({ className }: { className?: string }) {
         <pointLight position={[0, 5, -4]} intensity={40} color="#22d3ee" distance={20} />
 
         {/* Lightformers build the reflection environment locally — no HDR fetch,
-            so the scene has no network dependency and no pop-in. */}
-        <Environment resolution={192}>
+            so the scene has no network dependency and no pop-in.
+            `frames={1}` bakes the cubemap once instead of re-rendering it every
+            frame, and 64px is ample for a blurred metallic reflection: together
+            they were worth ~170ms of blocking time on the homepage. */}
+        <Environment resolution={64} frames={1}>
           <Lightformer intensity={2.4} position={[0, 4, 3]} scale={[8, 3, 1]} color="#6690ff" />
           <Lightformer intensity={1.6} position={[-5, -1, 2]} scale={[5, 5, 1]} color="#22d3ee" />
           <Lightformer intensity={1.9} position={[5, 1, -2]} scale={[5, 5, 1]} color="#a78bfa" />

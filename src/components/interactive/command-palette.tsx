@@ -1,7 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 /**
  * cmdk + Radix Dialog are only meaningful once the visitor opens the palette,
@@ -36,15 +44,31 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
   // Flipped from event handlers, never during render.
   const [mounted, setMounted] = useState(false);
 
-  const openPalette = useCallback((next: boolean) => {
-    if (next) setMounted(true);
+  /**
+   * The palette is usually opened by a keyboard shortcut rather than by
+   * activating a trigger, so Radix has no element to return focus to and drops
+   * it on <body> — which strands keyboard users at the top of the document.
+   * Remember where focus was and put it back.
+   */
+  const restoreFocusTo = useRef<HTMLElement | null>(null);
+
+  const applyOpen = useCallback((next: boolean) => {
+    if (next) {
+      restoreFocusTo.current = document.activeElement as HTMLElement | null;
+      setMounted(true);
+    } else {
+      const target = restoreFocusTo.current;
+      restoreFocusTo.current = null;
+      // After the dialog unmounts, or Radix's own focus handling overwrites us.
+      requestAnimationFrame(() => {
+        if (target?.isConnected) target.focus({ preventScroll: true });
+      });
+    }
     setOpen(next);
   }, []);
 
-  const toggle = useCallback(() => {
-    setMounted(true);
-    setOpen((prev) => !prev);
-  }, []);
+  const openPalette = applyOpen;
+  const toggle = useCallback(() => applyOpen(!open), [applyOpen, open]);
 
   const value = useMemo(
     () => ({ open, setOpen: openPalette, toggle }),

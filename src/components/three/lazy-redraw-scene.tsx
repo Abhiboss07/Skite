@@ -53,7 +53,14 @@ export function LazyRedrawScene({ className }: { className?: string }) {
     };
   }, []);
 
-  const shouldRender3D = isDesktop && webgl === true && !reducedMotion && idle;
+  // Machines reporting very few cores are usually low-power laptops or
+  // virtualised environments where WebGL falls back to software rasterisation
+  // — there the scene costs main-thread time instead of GPU time. They get the
+  // SVG composition, which carries the same idea.
+  const capableDevice =
+    typeof navigator === "undefined" || (navigator.hardwareConcurrency ?? 8) >= 4;
+
+  const shouldRender3D = isDesktop && webgl === true && !reducedMotion && idle && capableDevice;
 
   if (!shouldRender3D) {
     return <SketchOrb className={className} />;
