@@ -1,26 +1,633 @@
 @import "tailwindcss";
 
+/* Class-based dark mode driven by next-themes */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   SKITE DESIGN TOKENS
+   Identity: "The Redraw" — every surface lives between SKETCH and REALITY.
+   ========================================================================== */
+
+@theme {
+  /* --- Abyss: the deep space the product floats in ----------------------- */
+  --color-abyss-950: #02040e;
+  --color-abyss-900: #050816; /* primary background */
+  --color-abyss-850: #080c1d;
+  --color-abyss-800: #0b1023; /* secondary background */
+  --color-abyss-700: #111834;
+  --color-abyss-600: #1a2447;
+  --color-abyss-500: #26325c;
+  --color-abyss-400: #3a4878;
+
+  /* --- Electric: the primary accent, "current running through the line" --- */
+  --color-electric-50: #eef4ff;
+  --color-electric-100: #dbe6ff;
+  --color-electric-200: #bed3ff;
+  --color-electric-300: #91b6ff;
+  --color-electric-400: #6690ff;
+  --color-electric-500: #4d7cff;
+  --color-electric-600: #2e6bff;
+  --color-electric-700: #1f52e0;
+  --color-electric-800: #1c43b4;
+  --color-electric-900: #1c3d8e;
+
+  /* --- Aqua: the "scan", cool signal light ------------------------------- */
+  --color-aqua-50: #ecfeff;
+  --color-aqua-100: #cffafe;
+  --color-aqua-200: #a5f3fc;
+  --color-aqua-300: #67e8f9;
+  --color-aqua-400: #22d3ee;
+  --color-aqua-500: #06b6d4;
+  --color-aqua-600: #0891b2;
+  --color-aqua-700: #0e7490;
+
+  /* --- Violet: the "render", where imagination resolves ------------------ */
+  --color-violet-50: #f5f3ff;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+
+  /* --- Graphite: the sketch, pencil on paper ----------------------------- */
+  --color-graphite-100: #f4f5f7;
+  --color-graphite-200: #e3e5ea;
+  --color-graphite-300: #c8ccd6;
+  --color-graphite-400: #9aa1b1;
+  --color-graphite-500: #6f778a;
+  --color-graphite-600: #4d5566;
+  --color-graphite-700: #343b49;
+
+  /* --- Status ------------------------------------------------------------ */
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-error-400: #fb7185;
+  --color-error-500: #f43f5e;
+  --color-error-600: #e11d48;
+
+  /* --- Typography -------------------------------------------------------- */
+  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-jet), ui-monospace, "SF Mono", monospace;
+  --font-serif: var(--font-instrument), "Iowan Old Style", Georgia, serif;
+
+  /* Fluid display scale — no media queries needed, scales ultra-wide → phone */
+  --text-hero: clamp(2.75rem, 1.2rem + 7.6vw, 9.5rem);
+  --text-hero--line-height: 0.88;
+  --text-hero--letter-spacing: -0.045em;
+  --text-hero--font-weight: 600;
+
+  --text-display: clamp(2.25rem, 1.35rem + 4.2vw, 5.25rem);
+  --text-display--line-height: 0.94;
+  --text-display--letter-spacing: -0.038em;
+  --text-display--font-weight: 600;
+
+  --text-title: clamp(1.75rem, 1.25rem + 2.2vw, 3.25rem);
+  --text-title--line-height: 1.04;
+  --text-title--letter-spacing: -0.03em;
+  --text-title--font-weight: 600;
+
+  --text-heading: clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
+  --text-heading--line-height: 1.18;
+  --text-heading--letter-spacing: -0.022em;
+  --text-heading--font-weight: 600;
+
+  --text-lead: clamp(1.0625rem, 0.98rem + 0.5vw, 1.375rem);
+  --text-lead--line-height: 1.55;
+  --text-lead--letter-spacing: -0.014em;
+
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1;
+  --text-eyebrow--letter-spacing: 0.18em;
+  --text-eyebrow--font-weight: 500;
+
+  /* --- Radii: modern, generous ------------------------------------------ */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2.25rem;
+  --radius-3xl: 3rem;
+
+  /* --- Easing: one house curve set -------------------------------------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* --- Motion tokens ----------------------------------------------------- */
+  --animate-aurora: aurora 24s cubic-bezier(0.87, 0, 0.13, 1) infinite;
+  --animate-drift: drift 18s ease-in-out infinite;
+  --animate-marquee: marquee 42s linear infinite;
+  --animate-marquee-reverse: marquee-reverse 42s linear infinite;
+  --animate-shimmer: shimmer 2.6s ease-in-out infinite;
+  --animate-scan: scan 3.4s cubic-bezier(0.87, 0, 0.13, 1) infinite;
+  --animate-pulse-glow: pulse-glow 3.6s ease-in-out infinite;
+  --animate-spin-slow: spin 14s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes aurora {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+      opacity: 0.55;
+    }
+    33% {
+      transform: translate3d(6%, -8%, 0) scale(1.18) rotate(42deg);
+      opacity: 0.8;
+    }
+    66% {
+      transform: translate3d(-7%, 5%, 0) scale(0.92) rotate(-28deg);
+      opacity: 0.62;
+    }
+  }
+
+  @keyframes drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(3%, -4%, 0);
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  @keyframes marquee-reverse {
+    from {
+      transform: translate3d(-50%, 0, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -180% 0;
+    }
+    100% {
+      background-position: 180% 0;
+    }
+  }
+
+  @keyframes scan {
+    0% {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
+    12% {
+      opacity: 1;
+    }
+    88% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(110%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.97);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.03);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-14px) rotate(1.2deg);
+    }
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Radix measures the collapsed panel and exposes its height as a CSS var,
+     which lets us animate to an intrinsic height with no JS measurement. */
+  @keyframes acc-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+  }
+
+  @keyframes acc-up {
+    from {
+      height: var(--radix-accordion-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
+    }
+  }
+}
+
+/* ==========================================================================
+   SEMANTIC LAYER — light is the "sketch on paper" mode, dark is "rendered"
+   ========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fb;
+  --background-deep: #eceef4;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --foreground: #0b1023;
+  --foreground-muted: #4d5566;
+  --foreground-subtle: #6f778a;
+  --border: rgb(11 16 35 / 0.1);
+  --border-strong: rgb(11 16 35 / 0.18);
+  --ring: #2e6bff;
+
+  --glass: rgb(255 255 255 / 0.66);
+  --glass-border: rgb(11 16 35 / 0.09);
+  --glass-highlight: rgb(255 255 255 / 0.9);
+
+  --grid-line: rgb(11 16 35 / 0.055);
+  --noise-opacity: 0.028;
+  --aurora-opacity: 0.5;
+
+  --gradient-brand: linear-gradient(
+    100deg,
+    var(--color-aqua-400) 0%,
+    var(--color-electric-500) 46%,
+    var(--color-violet-500) 100%
+  );
+  --shadow-card: 0 1px 2px rgb(11 16 35 / 0.06), 0 12px 32px -12px rgb(11 16 35 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(11 16 35 / 0.06), 0 32px 64px -24px rgb(11 16 35 / 0.22);
+
+  color-scheme: light;
+}
+
+.dark {
+  --background: #050816;
+  --background-deep: #02040e;
+  --surface: #0b1023;
+  --surface-elevated: #111834;
+  --foreground: #eef1f8;
+  --foreground-muted: #9aa1b1;
+  --foreground-subtle: #6f778a;
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.16);
+  --ring: #6690ff;
+
+  --glass: rgb(255 255 255 / 0.035);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-highlight: rgb(255 255 255 / 0.14);
+
+  --grid-line: rgb(255 255 255 / 0.045);
+  --noise-opacity: 0.05;
+  --aurora-opacity: 1;
+
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset,
+    0 24px 48px -24px rgb(2 4 14 / 0.9);
+  --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.07) inset,
+    0 48px 96px -32px rgb(2 4 14 / 1);
+
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-deep: var(--background-deep);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--foreground-muted);
+  --color-subtle: var(--foreground-subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  /* Lenis owns scrolling when active; native smooth would fight it */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  html.lenis {
+    scroll-behavior: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-electric-500) 32%, transparent);
+    color: var(--foreground);
+  }
+
+  /* Visible, on-brand focus ring for keyboard users only */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* CustomCursor sets this on <html> only when it actually mounts, so the
+     native cursor is never hidden without a replacement being present. */
+  html.has-custom-cursor,
+  html.has-custom-cursor *:not(input):not(textarea):not([contenteditable="true"]) {
+    cursor: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 18%, transparent);
+    border-radius: 99px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 32%, transparent);
+    background-clip: content-box;
+  }
+
+  /* Respect the user. Kill motion, keep meaning. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================================================
+   THEME TRANSITION
+   The incoming theme is revealed by a circle expanding from the toggle button.
+   Both layers are stacked with the new one on top so there is no cross-fade.
+   ========================================================================== */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-wipe 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes theme-wipe {
+  from {
+    clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   UTILITIES — the reusable pieces of the SKITE visual language
+   ========================================================================== */
+
+/* The brand spectrum as text */
+@utility text-brand-gradient {
+  background-image: var(--gradient-brand);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  /* Descenders get clipped by background-clip:text without a little room */
+  padding-bottom: 0.08em;
+}
+
+/* Frosted panel. The core "reality" surface. */
+@utility glass {
+  background-color: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* A specular sheen tracing the top edge of a glass panel */
+@utility glass-sheen {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      var(--glass-highlight),
+      transparent 38%,
+      transparent 68%,
+      color-mix(in oklab, var(--color-electric-400) 22%, transparent)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Graph paper — the "sketch" substrate */
+@utility grid-paper {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@utility grid-paper-fine {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Radial fade so full-bleed textures never hit a hard edge */
+@utility mask-radial-fade {
+  -webkit-mask-image: radial-gradient(ellipse 62% 62% at 50% 42%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse 62% 62% at 50% 42%, #000 30%, transparent 78%);
+}
+
+@utility mask-fade-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+}
+
+@utility mask-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* Specular sweep across a button on hover.
+   Implemented as ::after rather than a real element so <Button asChild> still
+   passes exactly one child to Radix's Slot. Negative z-index inside the
+   button's own stacking context paints it above the fill but below the label. */
+@utility btn-sweep {
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    transform: translateX(-100%) skewX(-18deg);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  &:hover::after {
+    transform: translateX(100%) skewX(-18deg);
+  }
+}
+
+/* Hand-drawn stroke feel for SVG paths */
+@utility stroke-sketch {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Standard content rhythm */
+@utility container-skite {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 84rem;
+  padding-inline: 1.5rem;
+  @media (min-width: 1024px) {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* Vertical rhythm between major sections */
+@utility section-y {
+  padding-block: clamp(5rem, 3rem + 8vw, 11rem);
+}
+
+/* Perspective root for 3D card tilts */
+@utility perspective-card {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* Wrapper that lets text animate in per line without layout shift */
+@utility line-clip {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+
+/* Film-grain overlay */
+@utility noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: var(--noise-opacity);
+}
+
+/* Hide the native cursor only where the custom cursor takes over */
+@utility cursor-none-desktop {
+  @media (hover: hover) and (pointer: fine) {
+    cursor: none;
+  }
 }
