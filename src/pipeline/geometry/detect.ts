@@ -339,14 +339,34 @@ function separators(
 
   for (let i = 0; i < outer; i++) {
     let ink = 0;
+    // Longest unbroken stretch of ink along this line.
+    //
+    // Total ink is not enough on its own. Three image placeholders side by side
+    // have their top edges at the same y, and together those edges cover most
+    // of the band's width — so a row of separate boxes reads as a rule and the
+    // band is cut into strips that correspond to nothing. A drawn separator is
+    // continuous; a coincidence of aligned edges is not.
+    let longest = 0;
+    let current = 0;
+
+    const step = (on: boolean) => {
+      if (on) {
+        ink++;
+        current++;
+        if (current > longest) longest = current;
+      } else {
+        current = 0;
+      }
+    };
+
     if (along === "row") {
       const row = (box.y + i) * width;
-      for (let x = 0; x < span; x++) if (mask[row + box.x + x]) ink++;
+      for (let x = 0; x < span; x++) step(mask[row + box.x + x] === 1);
     } else {
-      for (let y = 0; y < span; y++) if (mask[(box.y + y) * width + box.x + i]) ink++;
+      for (let y = 0; y < span; y++) step(mask[(box.y + y) * width + box.x + i] === 1);
     }
 
-    if (ink >= need) {
+    if (ink >= need && longest >= span * 0.55) {
       if (open < 0) open = i;
     } else if (open >= 0) {
       runs.push({ start: open, end: i - 1 });
@@ -409,9 +429,20 @@ function decomposeFrame(mask: Uint8Array, width: number, box: Cell): Cell[] | nu
     const colSeps = separators(mask, width, bandBox, "column", 0.72);
     const cols = colSeps.length ? bandsBetween(colSeps, bandBox.w, MIN) : [];
 
+    // A column narrower than this is the gap between the outer border and the
+    // content, not a column of the layout. Real columns of a page are a
+    // meaningful share of it; the margins either side of a centred block are
+    // what produced 48px-wide "cards" spanning a whole band.
+    const minColumn = Math.max(MIN, box.w * 0.12);
+
     if (cols.length >= 2) {
-      for (const col of cols) {
-        cells.push({ x: bandBox.x + col.start, y: bandBox.y, w: col.end - col.start + 1, h: bandBox.h });
+      const wide = cols.filter((c) => c.end - c.start + 1 >= minColumn);
+      if (wide.length >= 2) {
+        for (const col of wide) {
+          cells.push({ x: bandBox.x + col.start, y: bandBox.y, w: col.end - col.start + 1, h: bandBox.h });
+        }
+      } else {
+        cells.push(bandBox);
       }
     } else {
       cells.push(bandBox);
@@ -644,6 +675,45 @@ function groupFragments(
   return merged.length ? [...regions.filter((r) => !absorbed.has(r)), ...merged] : regions;
 }
 
+/**
+ * Drop near-duplicate regions, keeping the better-evidenced one.
+ *
+ * Frame decomposition and component labelling can both describe the same drawn
+ * rectangle — the services images arrive twice, once as a component and once as
+ * a recovered cell. Only one of the pair can match ground truth, so the other
+ * is counted as a false positive even though the detector was right.
+ *
+ * Suppression is by overlap, not containment: two boxes are duplicates only
+ * when they are nearly the same box. A card genuinely contains its heading, and
+ * their IoU is low, so nesting survives untouched.
+ *
+ * The survivor is the one with more interior evidence, then the smaller — a
+ * tight box around the drawing beats a cell padded out to its band.
+ */
+function suppressDuplicates(regions: DetectedRegion[], threshold = 0.78): DetectedRegion[] {
+  const ranked = [...regions].sort((a, b) => {
+    const evidence = (b.interiorInk + b.interiorFill) - (a.interiorInk + a.interiorFill);
+    if (Math.abs(evidence) > 0.02) return evidence;
+    return a.w * a.h - b.w * b.h;
+  });
+
+  const kept: DetectedRegion[] = [];
+  for (const candidate of ranked) {
+    const duplicate = kept.some((k) => {
+      const x1 = Math.max(k.x, candidate.x);
+      const y1 = Math.max(k.y, candidate.y);
+      const x2 = Math.min(k.x + k.w, candidate.x + candidate.w);
+      const y2 = Math.min(k.y + k.h, candidate.y + candidate.h);
+      const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+      if (inter === 0) return false;
+      const union = k.w * k.h + candidate.w * candidate.h - inter;
+      return inter / union >= threshold;
+    });
+    if (!duplicate) kept.push(candidate);
+  }
+  return kept;
+}
+
 export function detect(
   mask: Uint8Array,
   width: number,
@@ -699,10 +769,12 @@ export function detect(
     regions.push({ id: `f${i}`, ...measureRegion(mask, width, height, cell, tone) });
   });
 
-  const grouped = groupFragments(
-    mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01))),
-    width,
-    height,
+  const grouped = suppressDuplicates(
+    groupFragments(
+      mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01))),
+      width,
+      height,
+    ),
   );
 
   // Detection confidence: did we find a plausible number of regions, and do they

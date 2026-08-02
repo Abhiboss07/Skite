@@ -415,5 +415,146 @@
       "ms": 269.26666666666665
     },
     "gate": "mixed"
+  },
+  {
+    "iteration": 9,
+    "label": "S2.1 — duplicate region suppression",
+    "at": "2026-08-02T20:15:17.347Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9007616005926691,
+        "geometry": 0.8649056979574787,
+        "order": 1,
+        "coverage": 0.8787878787878788,
+        "componentAccuracy": 0.8275862068965517,
+        "precision": 0.5918367346938775,
+        "recall": 0.8787878787878788,
+        "f1": 0.7073170731707316,
+        "falsePositives": 20,
+        "falseNegatives": 4,
+        "detected": 49,
+        "annotated": 33,
+        "correct": 24,
+        "ms": 420
+      }
+    },
+    "real": {
+      "fidelity": 0.9007616005926691,
+      "geometry": 0.8649056979574787,
+      "order": 1,
+      "coverage": 0.8787878787878788,
+      "componentAccuracy": 0.8275862068965517,
+      "precision": 0.5918367346938775,
+      "recall": 0.8787878787878788,
+      "f1": 0.7073170731707316,
+      "falsePositives": 20,
+      "falseNegatives": 4,
+      "detected": 49,
+      "annotated": 33,
+      "correct": 24,
+      "ms": 420
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 263.25
+    },
+    "gate": "improved"
+  },
+  {
+    "iteration": 10,
+    "label": "S2.1 — duplicate suppression at IoU 0.78",
+    "at": "2026-08-02T20:15:57.214Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9076110443775791,
+        "geometry": 0.8687456800232379,
+        "order": 1,
+        "coverage": 0.9090909090909091,
+        "componentAccuracy": 0.8333333333333334,
+        "precision": 0.6,
+        "recall": 0.9090909090909091,
+        "f1": 0.7228915662650602,
+        "falsePositives": 20,
+        "falseNegatives": 3,
+        "detected": 50,
+        "annotated": 33,
+        "correct": 25,
+        "ms": 402
+      }
+    },
+    "real": {
+      "fidelity": 0.9076110443775791,
+      "geometry": 0.8687456800232379,
+      "order": 1,
+      "coverage": 0.9090909090909091,
+      "componentAccuracy": 0.8333333333333334,
+      "precision": 0.6,
+      "recall": 0.9090909090909091,
+      "f1": 0.7228915662650602,
+      "falsePositives": 20,
+      "falseNegatives": 3,
+      "detected": 50,
+      "annotated": 33,
+      "correct": 25,
+      "ms": 402
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 263.3666666666667
+    },
+    "gate": "improved"
+  },
+  {
+    "iteration": 11,
+    "label": "S2.2 — separator contiguity + sliver rejection",
+    "at": "2026-08-02T20:16:53.862Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9145077688713382,
+        "geometry": 0.8726644632704122,
+        "order": 1,
+        "coverage": 0.9393939393939394,
+        "componentAccuracy": 0.8387096774193549,
+        "precision": 0.6888888888888889,
+        "recall": 0.9393939393939394,
+        "f1": 0.7948717948717948,
+        "falsePositives": 14,
+        "falseNegatives": 2,
+        "detected": 45,
+        "annotated": 33,
+        "correct": 26,
+        "ms": 419
+      }
+    },
+    "real": {
+      "fidelity": 0.9145077688713382,
+      "geometry": 0.8726644632704122,
+      "order": 1,
+      "coverage": 0.9393939393939394,
+      "componentAccuracy": 0.8387096774193549,
+      "precision": 0.6888888888888889,
+      "recall": 0.9393939393939394,
+      "f1": 0.7948717948717948,
+      "falsePositives": 14,
+      "falseNegatives": 2,
+      "detected": 45,
+      "annotated": 33,
+      "correct": 26,
+      "ms": 419
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 265.81666666666666
+    },
+    "gate": "improved"
   }
 ]
