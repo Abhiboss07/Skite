@@ -86,5 +86,99 @@
       "ms": 264.53333333333336
     },
     "gate": "improved"
+  },
+  {
+    "iteration": 2,
+    "label": "P2 — density grouping of illustration fragments",
+    "at": "2026-08-02T19:57:25.772Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9027195261234285,
+        "geometry": 0.8681689071754113,
+        "order": 1,
+        "coverage": 0.8787878787878788,
+        "componentAccuracy": 0.7931034482758621,
+        "precision": 0.453125,
+        "recall": 0.8787878787878788,
+        "f1": 0.5979381443298969,
+        "falsePositives": 35,
+        "falseNegatives": 4,
+        "detected": 64,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 409
+      }
+    },
+    "real": {
+      "fidelity": 0.9027195261234285,
+      "geometry": 0.8681689071754113,
+      "order": 1,
+      "coverage": 0.8787878787878788,
+      "componentAccuracy": 0.7931034482758621,
+      "precision": 0.453125,
+      "recall": 0.8787878787878788,
+      "f1": 0.5979381443298969,
+      "falsePositives": 35,
+      "falseNegatives": 4,
+      "detected": 64,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 409
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 262.28333333333336
+    },
+    "gate": "mixed"
+  },
+  {
+    "iteration": 3,
+    "label": "P2 — density grouping, regularity-gated",
+    "at": "2026-08-02T19:58:24.876Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9079553332785334,
+        "geometry": 0.8693194948581617,
+        "order": 1,
+        "coverage": 0.9090909090909091,
+        "componentAccuracy": 0.7666666666666667,
+        "precision": 0.5660377358490566,
+        "recall": 0.9090909090909091,
+        "f1": 0.6976744186046512,
+        "falsePositives": 23,
+        "falseNegatives": 3,
+        "detected": 53,
+        "annotated": 33,
+        "correct": 23,
+        "ms": 403
+      }
+    },
+    "real": {
+      "fidelity": 0.9079553332785334,
+      "geometry": 0.8693194948581617,
+      "order": 1,
+      "coverage": 0.9090909090909091,
+      "componentAccuracy": 0.7666666666666667,
+      "precision": 0.5660377358490566,
+      "recall": 0.9090909090909091,
+      "f1": 0.6976744186046512,
+      "falsePositives": 23,
+      "falseNegatives": 3,
+      "detected": 53,
+      "annotated": 33,
+      "correct": 23,
+      "ms": 403
+    },
+    "synthetic": {
+      "fidelity": 0.8702763486535954,
+      "f1": 0.8268131288137278,
+      "componentAccuracy": 0.8812305749805754,
+      "coverage": 0.8164120370370367,
+      "ms": 266.4166666666667
+    },
+    "gate": "improved"
   }
 ]

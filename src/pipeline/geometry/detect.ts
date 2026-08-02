@@ -518,6 +518,132 @@ function measureRegion(
   return { x, y, w, h, strokePixels, fillRatio, interiorInk, interiorFill, lines: 1, primitive };
 }
 
+/**
+ * Merge dense clusters of small fragments into the illustration they came from.
+ *
+ * A halftone map or a hatched drawing is not connected ink — it is dozens of
+ * disconnected strokes, and component labelling faithfully returns dozens of
+ * regions where a person sees one picture. Raising the dilation radius until
+ * they join is not the answer: the radius was reduced to one pass precisely
+ * because a larger one merged adjacent cards.
+ *
+ * So the grouping is done on regions rather than pixels, and only after text
+ * merging has run. Anything that reads as a line or block of text has already
+ * been claimed by that pass, which is what keeps this from swallowing a
+ * paragraph — the hard part of the problem, and the reason the ordering
+ * matters more than the thresholds.
+ *
+ * A cluster qualifies only when it is genuinely fragmentary: several small
+ * pieces, close together, sparse inside their own bounding box. A block of
+ * solid content fails the sparsity test and is left alone.
+ */
+function groupFragments(
+  regions: DetectedRegion[],
+  width: number,
+  height: number,
+): DetectedRegion[] {
+  const MIN_MEMBERS = 5;
+  const maxW = width * 0.16;
+  const maxH = height * 0.06;
+  /** Two fragments belong together if their gap is under this. */
+  const radius = Math.max(10, Math.round(Math.min(width, height) * 0.022));
+
+  // Text primitives are *not* excluded here. The first version did exclude
+  // them, and grouped nothing at all: the strokes of a map are thin, so most
+  // of them type as text, and the filter meant to protect paragraphs removed
+  // the very fragments it was supposed to collect. Regularity is the honest
+  // discriminator — see the row test below — not the primitive label.
+  const small = regions.filter((r) => r.w <= maxW && r.h <= maxH && r.lines <= 1);
+  if (small.length < MIN_MEMBERS) return regions;
+
+  // Union-find over proximity.
+  const parent = small.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const union = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  };
+
+  for (let i = 0; i < small.length; i++) {
+    for (let j = i + 1; j < small.length; j++) {
+      const a = small[i];
+      const b = small[j];
+      const gapX = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
+      const gapY = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h));
+      if (gapX <= radius && gapY <= radius) union(i, j);
+    }
+  }
+
+  const clusters = new Map<number, DetectedRegion[]>();
+  small.forEach((r, i) => {
+    const key = find(i);
+    clusters.set(key, [...(clusters.get(key) ?? []), r]);
+  });
+
+  const absorbed = new Set<DetectedRegion>();
+  const merged: DetectedRegion[] = [];
+
+  for (const members of clusters.values()) {
+    if (members.length < MIN_MEMBERS) continue;
+
+    const x = Math.min(...members.map((m) => m.x));
+    const y = Math.min(...members.map((m) => m.y));
+    const right = Math.max(...members.map((m) => m.x + m.w));
+    const bottom = Math.max(...members.map((m) => m.y + m.h));
+    const w = right - x;
+    const h = bottom - y;
+    const area = w * h;
+
+    // Sparsity: the members must occupy a small share of the box they span.
+    // A run of text lines fills most of its own bounding box; a scattering of
+    // illustration strokes does not.
+    const covered = members.reduce((sum, m) => sum + m.w * m.h, 0);
+    if (covered / area > 0.55) continue;
+
+    // And the cluster must be a compact shape, not a thin band spanning the
+    // page — that shape is a row of separate things, not one picture.
+    if (w > width * 0.75 || h > height * 0.4) continue;
+
+    // The regularity test, which is what keeps a paragraph intact.
+    //
+    // Lines of text are strikingly uniform: near-identical heights, left edges
+    // within a few pixels of each other, stacked at an even pitch. The pieces
+    // of an illustration are not — they vary in size and sit at arbitrary
+    // offsets. Measuring that directly is far more reliable than inferring it
+    // from the primitive type, which only reflects one region's shape.
+    const heights = members.map((m) => m.h);
+    const meanH = heights.reduce((a, b) => a + b, 0) / heights.length;
+    const heightSpread =
+      Math.sqrt(heights.reduce((a, v) => a + (v - meanH) ** 2, 0) / heights.length) / Math.max(1, meanH);
+
+    const lefts = members.map((m) => m.x);
+    const meanX = lefts.reduce((a, b) => a + b, 0) / lefts.length;
+    const leftSpread = Math.sqrt(lefts.reduce((a, v) => a + (v - meanX) ** 2, 0) / lefts.length);
+
+    const looksLikeText = heightSpread < 0.35 && leftSpread < Math.max(12, w * 0.12);
+    if (looksLikeText) continue;
+
+    for (const m of members) absorbed.add(m);
+    merged.push({
+      id: `g${merged.length}`,
+      x,
+      y,
+      w,
+      h,
+      strokePixels: members.reduce((sum, m) => sum + m.strokePixels, 0),
+      fillRatio: members.reduce((sum, m) => sum + m.strokePixels, 0) / area,
+      // The pieces of an illustration are its interior by definition.
+      interiorInk: covered / area,
+      interiorFill: Math.max(...members.map((m) => m.interiorFill)),
+      lines: 1,
+      primitive: "container",
+    });
+  }
+
+  return merged.length ? [...regions.filter((r) => !absorbed.has(r)), ...merged] : regions;
+}
+
 export function detect(
   mask: Uint8Array,
   width: number,
@@ -573,7 +699,11 @@ export function detect(
     regions.push({ id: `f${i}`, ...measureRegion(mask, width, height, cell, tone) });
   });
 
-  const grouped = mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01)));
+  const grouped = groupFragments(
+    mergeTextBlocks(mergeTextRuns(regions, Math.max(6, width * 0.01))),
+    width,
+    height,
+  );
 
   // Detection confidence: did we find a plausible number of regions, and do they
   // look like structure rather than speckle? Reported rather than assumed.
