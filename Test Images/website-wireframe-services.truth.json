@@ -1,0 +1,381 @@
+{
+  "id": "website-wireframe-services",
+  "style": "figma",
+  "annotator": "claude \u2014 provisional; see reports/real-test-report.html",
+  "source": {
+    "file": "website-wireframe-services.jpg",
+    "pixels": {
+      "w": 1024,
+      "h": 1536
+    }
+  },
+  "canvas": {
+    "w": 1440,
+    "h": 2160
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "role": "navbar",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 63,
+        "w": 1266,
+        "h": 98
+      }
+    },
+    {
+      "id": "n2",
+      "role": "heading",
+      "parent": "n1",
+      "box": {
+        "x": 141,
+        "y": 91,
+        "w": 134,
+        "h": 42
+      }
+    },
+    {
+      "id": "n3",
+      "role": "heading",
+      "parent": "n1",
+      "box": {
+        "x": 654,
+        "y": 101,
+        "w": 82,
+        "h": 22
+      }
+    },
+    {
+      "id": "n4",
+      "role": "heading",
+      "parent": "n1",
+      "box": {
+        "x": 783,
+        "y": 101,
+        "w": 110,
+        "h": 22
+      }
+    },
+    {
+      "id": "n5",
+      "role": "heading",
+      "parent": "n1",
+      "box": {
+        "x": 939,
+        "y": 101,
+        "w": 110,
+        "h": 22
+      }
+    },
+    {
+      "id": "n6",
+      "role": "button",
+      "parent": "n1",
+      "box": {
+        "x": 1121,
+        "y": 84,
+        "w": 194,
+        "h": 55
+      }
+    },
+    {
+      "id": "n7",
+      "role": "hero",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 162,
+        "w": 1266,
+        "h": 548
+      }
+    },
+    {
+      "id": "n8",
+      "role": "heading",
+      "parent": "n7",
+      "box": {
+        "x": 436,
+        "y": 321,
+        "w": 565,
+        "h": 94
+      }
+    },
+    {
+      "id": "n9",
+      "role": "paragraph",
+      "parent": "n7",
+      "box": {
+        "x": 398,
+        "y": 461,
+        "w": 645,
+        "h": 28
+      }
+    },
+    {
+      "id": "n10",
+      "role": "button",
+      "parent": "n7",
+      "box": {
+        "x": 581,
+        "y": 537,
+        "w": 280,
+        "h": 62
+      }
+    },
+    {
+      "id": "n11",
+      "role": "grid",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 710,
+        "w": 1266,
+        "h": 478
+      }
+    },
+    {
+      "id": "n12",
+      "role": "heading",
+      "parent": "n11",
+      "box": {
+        "x": 551,
+        "y": 766,
+        "w": 338,
+        "h": 39
+      }
+    },
+    {
+      "id": "n13",
+      "role": "image",
+      "parent": "n11",
+      "box": {
+        "x": 184,
+        "y": 832,
+        "w": 323,
+        "h": 229
+      }
+    },
+    {
+      "id": "n14",
+      "role": "image",
+      "parent": "n11",
+      "box": {
+        "x": 557,
+        "y": 832,
+        "w": 323,
+        "h": 229
+      }
+    },
+    {
+      "id": "n15",
+      "role": "image",
+      "parent": "n11",
+      "box": {
+        "x": 928,
+        "y": 832,
+        "w": 323,
+        "h": 229
+      }
+    },
+    {
+      "id": "n16",
+      "role": "paragraph",
+      "parent": "n11",
+      "box": {
+        "x": 204,
+        "y": 1090,
+        "w": 284,
+        "h": 42
+      }
+    },
+    {
+      "id": "n17",
+      "role": "paragraph",
+      "parent": "n11",
+      "box": {
+        "x": 577,
+        "y": 1090,
+        "w": 284,
+        "h": 42
+      }
+    },
+    {
+      "id": "n18",
+      "role": "paragraph",
+      "parent": "n11",
+      "box": {
+        "x": 949,
+        "y": 1090,
+        "w": 284,
+        "h": 42
+      }
+    },
+    {
+      "id": "n19",
+      "role": "card",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 1188,
+        "w": 633,
+        "h": 274
+      }
+    },
+    {
+      "id": "n20",
+      "role": "image",
+      "parent": "n19",
+      "box": {
+        "x": 184,
+        "y": 1230,
+        "w": 232,
+        "h": 190
+      }
+    },
+    {
+      "id": "n21",
+      "role": "paragraph",
+      "parent": "n19",
+      "box": {
+        "x": 450,
+        "y": 1238,
+        "w": 221,
+        "h": 42
+      }
+    },
+    {
+      "id": "n22",
+      "role": "card",
+      "parent": null,
+      "box": {
+        "x": 720,
+        "y": 1188,
+        "w": 633,
+        "h": 274
+      }
+    },
+    {
+      "id": "n23",
+      "role": "paragraph",
+      "parent": "n22",
+      "box": {
+        "x": 766,
+        "y": 1245,
+        "w": 359,
+        "h": 127
+      }
+    },
+    {
+      "id": "n24",
+      "role": "image",
+      "parent": "n22",
+      "box": {
+        "x": 1146,
+        "y": 1256,
+        "w": 110,
+        "h": 111
+      }
+    },
+    {
+      "id": "n25",
+      "role": "card",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 1462,
+        "w": 633,
+        "h": 288
+      }
+    },
+    {
+      "id": "n26",
+      "role": "heading",
+      "parent": "n25",
+      "box": {
+        "x": 184,
+        "y": 1519,
+        "w": 248,
+        "h": 39
+      }
+    },
+    {
+      "id": "n27",
+      "role": "paragraph",
+      "parent": "n25",
+      "box": {
+        "x": 184,
+        "y": 1592,
+        "w": 390,
+        "h": 46
+      }
+    },
+    {
+      "id": "n28",
+      "role": "card",
+      "parent": null,
+      "box": {
+        "x": 720,
+        "y": 1462,
+        "w": 633,
+        "h": 288
+      }
+    },
+    {
+      "id": "n29",
+      "role": "image",
+      "parent": "n28",
+      "box": {
+        "x": 755,
+        "y": 1495,
+        "w": 553,
+        "h": 218
+      }
+    },
+    {
+      "id": "n30",
+      "role": "footer",
+      "parent": null,
+      "box": {
+        "x": 87,
+        "y": 1751,
+        "w": 1266,
+        "h": 274
+      }
+    },
+    {
+      "id": "n31",
+      "role": "heading",
+      "parent": "n30",
+      "box": {
+        "x": 570,
+        "y": 1807,
+        "w": 302,
+        "h": 42
+      }
+    },
+    {
+      "id": "n32",
+      "role": "button",
+      "parent": "n30",
+      "box": {
+        "x": 485,
+        "y": 1884,
+        "w": 300,
+        "h": 49
+      }
+    },
+    {
+      "id": "n33",
+      "role": "button",
+      "parent": "n30",
+      "box": {
+        "x": 799,
+        "y": 1884,
+        "w": 155,
+        "h": 84
+      }
+    }
+  ]
+}

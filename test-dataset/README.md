@@ -27,6 +27,15 @@ Five layout archetypes, cycled across each style: split hero with a card row;
 centred hero with four cards; stacked sections; a hero with a full-width image; a
 two-column feature list.
 
+**Known blind spots, demonstrated by the first real-world test.** The generator
+draws sections as detached rectangles with clean gaps, and never draws display
+type or halftone illustrations. Real wireframes do all three, and each broke the
+detector in a way no synthetic sample reproduces: a page frame whose section
+rules touch it becomes one connected component; 85px display glyphs classify as
+image placeholders; a light-grey map fragments into a dozen regions. See
+`reports/real-test-report.html`. Adding these cases to the generator would make
+the synthetic corpus a better regression signal.
+
 **These are not real sketches, and results on them are not evidence that the
 pipeline works on real ones.** Their value is that ground truth is exact and the
 corpus never changes, which makes them a precise regression signal: if geometry

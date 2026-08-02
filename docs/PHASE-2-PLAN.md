@@ -245,24 +245,40 @@ annotation noise. Real photographs measure whether the thing works; synthetic
 samples measure whether a change made it worse. They answer different questions
 and the project needs both. Everything else in 2B proceeds as you specified.
 
-### 2C — accuracy, recall-first
+### 2C — accuracy, driven by real failures
 
-Ordered by expected gain, measured against both corpora after each change:
+**Revised after the first real-world test** (`reports/real-test-report.html`, a
+1024×1536 vector services wireframe). The synthetic corpus pointed at faint
+strokes and dilation; one real image pointed somewhere else entirely, which is
+the argument for measuring before optimising.
 
-| # | Work | Targets |
-|---|---|---|
-| 2C.1 | Faint-stroke recovery: hysteresis thresholding (strong seeds, weak growth) instead of one cut | coverage |
-| 2C.2 | Adaptive dilation — currently one global pass; gap size varies with stroke width and scale | coverage, merge errors |
-| 2C.3 | Split merged regions: detect a component whose ink forms two rectangles and separate it | coverage, FP |
-| 2C.4 | Perspective rectification for photographs taken at an angle | geometry |
-| 2C.5 | Text-block merging by measured line spacing rather than a heuristic window | coverage, roles |
-| 2C.6 | Nested-layout inference: recurse column-splitting inside containers | order, geometry |
-| 2C.7 | Role refinement via the vision provider, measured against the heuristic baseline | component accuracy |
+Baseline on that image: fidelity 85.3%, geometry 83.8%, reading order 100%,
+**recall 66.7%, precision 44.9%, F1 53.7%** — 11 missed regions and 27 spurious
+ones out of 49 detected.
 
-No new features. Every change is gated on the benchmark: if fidelity or coverage
-drops on either corpus, it does not land.
+The dominant failure is **structural**: connected components that are not
+components, in both directions.
 
----
+| # | Work | Evidence | Expected gain |
+|---|---|---|---|
+| 2C.1 | Rectangle decomposition — recover cell rectangles from projection profiles where a component is dominated by long axis-aligned runs | F1: the page frame and its section rules are one blob, swallowing navbar, hero, grid, 4 cards and footer | 8 of 11 missed regions; restores the containment tree |
+| 2C.2 | Relative text-height threshold + merge same-height neighbours before classification | F2: "HEADLINE" became 8 image placeholders at 82% confidence, because 85px glyphs fail an absolute `h < 46` text test | −8 FP, +1 region |
+| 2C.3 | Density-based grouping of small components in a compact area | F3: the map illustration fragmented into ~12 regions | −12 FP, +1 region |
+| 2C.4 | Grid fit against top-level section edges only; stronger complexity penalty | F4: fitted 12 columns at 39% confidence on a 1–2 column page | span quality |
+| 2C.5 | Hysteresis thresholding for faint strokes | synthetic corpus | coverage |
+| 2C.6 | Adaptive dilation radius from measured stroke width | synthetic corpus | coverage, merge errors |
+| 2C.7 | Role refinement via the vision provider, measured against the heuristic | — | component accuracy |
+
+Note 2C.7 sits last on evidence, not preference. On the real image, component
+accuracy *among detected regions* is already 81.8% while recall is 66.7% — so a
+better classifier, model-based or otherwise, improves the number that is already
+highest. This is a detection problem.
+
+**Every change is gated on three numbers, not one.** Coverage alone can be raised
+by making the detector trigger-happy, which is how precision 44.9% happens. A
+change lands only if F1 improves and neither corpus regresses on fidelity.
+
+No new features.
 
 ## Offline guarantee
 

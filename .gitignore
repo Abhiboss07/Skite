@@ -44,3 +44,6 @@ next-env.d.ts
 # 7 MB of PNGs would only add weight a `npm run dataset` recreates exactly.
 /test-dataset/synthetic/
 /test-dataset/results/
+
+# Intermediate artefacts; the HTML report is self-contained.
+/reports/assets/
