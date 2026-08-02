@@ -7,9 +7,12 @@ import { usePrefersReducedMotion } from "@/hooks/use-media-query";
 import { EASE, VIEWPORT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
+/** Narrowed so TS can resolve className/children — bare ElementType cannot. */
+type TextTag = ElementType<{ className?: string; children?: ReactNode }>;
+
 type WordRevealProps = {
   text: string;
-  as?: ElementType;
+  as?: TextTag;
   className?: string;
   wordClassName?: string;
   delay?: number;
@@ -26,7 +29,7 @@ type WordRevealProps = {
  */
 export function WordReveal({
   text,
-  as: Tag = "span",
+  as: Tag = "span" as TextTag,
   className,
   wordClassName,
   delay = 0,

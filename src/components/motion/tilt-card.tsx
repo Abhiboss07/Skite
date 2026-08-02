@@ -80,7 +80,9 @@ export function TiltCard({
   }
 
   return (
-    <div className="perspective-card">
+    // h-full so a card in a stretched grid row can fill it — without this the
+    // perspective wrapper collapses to content height and rows go ragged.
+    <div className="perspective-card h-full">
       <motion.div
         ref={ref}
         className={cn("relative will-change-transform", className)}
