@@ -95,6 +95,12 @@ Accessibility is checked with axe-core against every route in both themes; the
 current state is **zero violations** across WCAG 2.1 A/AA plus best-practice
 rules.
 
+A full production audit — Lighthouse on 15 pages in both form factors, 184
+Playwright page loads across 8 breakpoints, keyboard/focus/reduced-motion/theme
+checks and a bundle breakdown — is written up in [AUDIT.md](AUDIT.md).
+Headline: desktop Lighthouse is 100 on 14 of 15 pages, accessibility, best
+practices and SEO are 100 everywhere, and CLS is 0.
+
 ## Before this goes live
 
 - [ ] **Replace all placeholder content.** `lib/content.ts` flags it: the
