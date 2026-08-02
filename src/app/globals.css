@@ -559,6 +559,22 @@
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 
+/*
+ * An overlay surface: glass, but opaque enough to read against anything.
+ *
+ * `glass` is near-transparent by design — the header bar sits over whatever
+ * happens to be behind it and carries almost no text, so a faint tint is right.
+ * A dropdown is not that. Opened over the hero, a 3.5%-white fill let a display
+ * headline read straight through the menu items. This keeps the blur and the
+ * sheen and puts a real surface behind them.
+ */
+@utility glass-panel {
+  background-color: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
 /* A specular sheen tracing the top edge of a glass panel */
 @utility glass-sheen {
   position: relative;

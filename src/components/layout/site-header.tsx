@@ -31,7 +31,39 @@ export function SiteHeader() {
 
   const [condensed, setCondensed] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  /**
+   * A menu opened by hover closes when the pointer leaves; one the visitor
+   * clicked stays until they dismiss it.
+   *
+   * Without the distinction, a plain toggle on click is wrong for the most
+   * ordinary interaction there is: the pointer arrives, hover opens the menu,
+   * and the click that follows finds it already open and closes it. The menu
+   * shuts the instant you click the thing that opens it.
+   */
+  const [pinned, setPinned] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const openFromHover = (label: string) => {
+    if (pinned) return;
+    setOpenGroup(label);
+  };
+
+  const toggleFromClick = (label: string) => {
+    if (openGroup === label && pinned) {
+      setOpenGroup(null);
+      setPinned(false);
+      return;
+    }
+    // Covers both "closed" and "open from hover": in either case the click
+    // leaves it open and pinned.
+    setOpenGroup(label);
+    setPinned(true);
+  };
+
+  const dismiss = () => {
+    setOpenGroup(null);
+    setPinned(false);
+  };
 
   /**
    * The header is fixed and stays fixed. It never translates, never hides, and
@@ -73,7 +105,28 @@ export function SiteHeader() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
     setOpenGroup(null);
+    setPinned(false);
   }, [pathname]);
+
+  // A pinned menu needs the two dismissals every pinned popover needs: Escape,
+  // and a click anywhere else. Hover-opened menus already close on mouseleave.
+  useEffect(() => {
+    if (!pinned) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target as Element | null)?.closest("header")) dismiss();
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [pinned]);
 
   // Lock the page while the mobile sheet is open.
   useEffect(() => {
@@ -93,7 +146,9 @@ export function SiteHeader() {
           filter. Nothing about the header's position is animated. */}
       <header
         className="fixed inset-x-0 top-0 z-[100]"
-        onMouseLeave={() => setOpenGroup(null)}
+        onMouseLeave={() => {
+          if (!pinned) setOpenGroup(null);
+        }}
       >
         <div className="container-skite">
           <div className="relative isolate mt-3 flex items-center justify-between gap-4 rounded-lg px-3 py-2.5 lg:px-4">
@@ -122,11 +177,15 @@ export function SiteHeader() {
             {/* Desktop navigation */}
             <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
               {primaryNav.map((group) => (
-                <div key={group.label} onMouseEnter={() => setOpenGroup(group.label)}>
+                <div
+                  key={group.label}
+                  className="relative"
+                  onMouseEnter={() => openFromHover(group.label)}
+                >
                   <button
                     type="button"
                     aria-expanded={openGroup === group.label}
-                    onClick={() => setOpenGroup(openGroup === group.label ? null : group.label)}
+                    onClick={() => toggleFromClick(group.label)}
                     className={cn(
                       "relative rounded-sm px-3.5 py-2 text-sm font-medium transition-colors duration-300",
                       openGroup === group.label ||
@@ -137,6 +196,53 @@ export function SiteHeader() {
                   >
                     {group.label}
                   </button>
+
+                  {/* The panel hangs from its own trigger rather than spanning
+                      the page. A full-width mega menu made sense when it held
+                      three columns of links; for four items it covered half the
+                      hero to show a list that fits in a phone's width. */}
+                  <AnimatePresence>
+                    {openGroup === group.label ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.985 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.985 }}
+                        transition={{ duration: 0.16, ease: EASE.out }}
+                        style={{ transformOrigin: "top center" }}
+                        className="absolute top-full left-1/2 z-10 w-[26rem] -translate-x-1/2 pt-2.5"
+                      >
+                        <div className="glass-panel glass-sheen rounded-lg p-1.5 shadow-lift">
+                          <ul className="flex flex-col gap-px">
+                            {group.items.map((item) => (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  onClick={dismiss}
+                                  className={cn(
+                                    "group/link flex flex-col gap-0.5 rounded-md px-3 py-2.5 transition-colors duration-200",
+                                    "hover:bg-[color-mix(in_oklab,var(--color-electric-500)_10%,transparent)]",
+                                  )}
+                                >
+                                  <span className="flex items-center gap-1.5 text-[0.8125rem] leading-tight font-medium text-foreground">
+                                    {item.label}
+                                    <ArrowUpRight
+                                      className="size-3 -translate-x-1 opacity-0 transition-all duration-200 group-hover/link:translate-x-0 group-hover/link:opacity-100"
+                                      strokeWidth={2}
+                                    />
+                                  </span>
+                                  {item.description ? (
+                                    <span className="line-clamp-1 text-[0.75rem] leading-snug text-subtle">
+                                      {item.description}
+                                    </span>
+                                  ) : null}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
                 </div>
               ))}
 
@@ -144,7 +250,9 @@ export function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onMouseEnter={() => setOpenGroup(null)}
+                  onMouseEnter={() => {
+                    if (!pinned) setOpenGroup(null);
+                  }}
                   className={cn(
                     "rounded-sm px-3.5 py-2 text-sm font-medium transition-colors duration-300",
                     isActive(item.href) ? "text-foreground" : "text-muted hover:text-foreground",
@@ -201,50 +309,6 @@ export function SiteHeader() {
           </div>
         </div>
 
-        {/* Desktop mega menu */}
-        <AnimatePresence>
-          {openGroup ? (
-            <motion.div
-              key={openGroup}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.26, ease: EASE.out }}
-              className="container-skite hidden lg:block"
-            >
-              <div className="glass glass-sheen mt-2 rounded-lg border-border p-2.5 shadow-lift">
-                <ul className="grid grid-cols-2 gap-1">
-                  {primaryNav
-                    .find((group) => group.label === openGroup)
-                    ?.items.map((item) => (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "group/link flex flex-col gap-1 rounded-md p-4 transition-colors duration-300",
-                            "hover:bg-[color-mix(in_oklab,var(--color-electric-500)_10%,transparent)]",
-                          )}
-                        >
-                          <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                            {item.label}
-                            <ArrowUpRight
-                              className="size-3.5 -translate-x-1 opacity-0 transition-all duration-300 group-hover/link:translate-x-0 group-hover/link:opacity-100"
-                              strokeWidth={2}
-                            />
-                          </span>
-                          {item.description ? (
-                            <span className="text-[0.8125rem] leading-snug text-subtle">
-                              {item.description}
-                            </span>
-                          ) : null}
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
       </header>
 
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} isActive={isActive} />
