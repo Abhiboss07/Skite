@@ -10,7 +10,7 @@ import { createMetadata } from "@/lib/metadata";
 export const metadata = createMetadata({
   title: "Pricing",
   description:
-    "Start free with five redraws a month. Studio at $26 per editor billed annually for unlimited redraws and design-system binding. Custom Atelier plans for agencies and platform teams.",
+    "Start free with five redraws a month. Studio at ₹1,999 per editor billed annually for unlimited redraws and design-system binding. Custom Atelier plans for agencies and platform teams.",
   path: "/pricing",
   keywords: ["SKITE pricing", "sketch to code pricing", "AI design tool cost"],
 });

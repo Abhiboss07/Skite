@@ -17,6 +17,13 @@ import { cn } from "@/lib/utils";
 
 const ANNUAL_DISCOUNT = 0.2;
 
+/**
+ * Indian digit grouping: ₹1,00,000, not ₹100,000. The locale does the grouping;
+ * hard-coding `toLocaleString()` without one would follow the visitor's browser
+ * and show a rupee figure grouped the American way.
+ */
+const inr = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+
 export function Pricing({ standalone = false }: { standalone?: boolean }) {
   const [annual, setAnnual] = useState(true);
 
@@ -136,7 +143,7 @@ export function Pricing({ standalone = false }: { standalone?: boolean }) {
                           transition={{ duration: 0.28, ease: EASE.out }}
                           className="font-display text-[3rem] leading-none font-semibold tracking-[-0.045em] tabular-nums"
                         >
-                          {displayed === null ? "Let's talk" : `$${displayed}`}
+                          {displayed === null ? "Let's talk" : inr(displayed)}
                         </motion.span>
                       </AnimatePresence>
                       {displayed !== null ? (
@@ -181,7 +188,7 @@ export function Pricing({ standalone = false }: { standalone?: boolean }) {
         <Reveal delay={0.2}>
           <p className="mt-10 text-center text-[0.8125rem] text-subtle">
             All plans include the photoreal render mode, SSO-ready accounts and
-            zero training on your data. Prices in USD, excluding tax.
+            zero training on your data. Prices in INR, excluding GST.
           </p>
         </Reveal>
       </div>

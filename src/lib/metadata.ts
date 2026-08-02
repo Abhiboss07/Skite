@@ -91,7 +91,7 @@ export function organizationJsonLd() {
         offers: {
           "@type": "Offer",
           price: "0",
-          priceCurrency: "USD",
+          priceCurrency: "INR",
           description: "Free tier with 5 redraws per month",
         },
         aggregateRating: {

@@ -203,6 +203,12 @@ export const testimonials = [
   },
 ];
 
+/**
+ * Prices are in Indian rupees, set as rupee price points rather than converted
+ * from a dollar figure — ₹2,499 is a number this market recognises, ₹2,816 is
+ * an exchange rate showing through. The annual rate lands on ₹1,999 for the
+ * same reason.
+ */
 export const pricingTiers = [
   {
     name: "Sketch",
@@ -221,7 +227,7 @@ export const pricingTiers = [
   },
   {
     name: "Studio",
-    price: 32,
+    price: 2499,
     cadence: "per editor / month",
     tagline: "For designers and teams shipping every week.",
     cta: "Start 14-day trial",
