@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dataset": "node test-dataset/generate.ts",
+    "evaluate": "node scripts/evaluate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
