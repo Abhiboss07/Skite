@@ -15,8 +15,9 @@ production-ready websites **while preserving the drawn layout exactly**. The
 pipeline is deliberately computer-vision-first and deterministic; a language
 model is optional and confined to jobs that genuinely need one. Phase 1 (the
 marketing site) and Phase 2 (the detection engine) are complete and frozen.
-Phase 3 (semantic understanding) is half done. Phase 4 (the AI design engine) has
-not started.
+Phase 3 (semantic understanding) is complete except for text-dependent types.
+Phase 4 (the design engine) has its first slice: a deterministic design
+constraint engine that generates tokens and proves it moved no layout.
 
 Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 
@@ -31,7 +32,8 @@ Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 | `v1.0-landing` | The marketing site: 19 pages, Lighthouse-audited |
 | `v1.1-ui-polish` | Sticky header, compact nav menu, INR pricing |
 | `v2.0-mvp-vertical-slice` | End-to-end pipeline: sketch → working React component |
-| `v1.0-detection-engine` | **Detection frozen.** F1 88.6 %, precision 83.8 %, recall 93.9 % |
+| `v1.0-detection-engine` | **Detection frozen.** Detector unchanged since. |
+| `v1.1-semantic-design` | Post-structure pruning, List/Divider, design constraint engine. F1 95.4 % |
 
 ### Stack
 
@@ -64,7 +66,7 @@ src/ai/                provider-agnostic model layer
   registry.ts          resolution + health probes
 
 src/app/
-  studio/              10-tab pipeline inspector
+  studio/              11-tab pipeline inspector
   annotate/            ground-truth annotation tool
   evaluation/          benchmark dashboard
   api/generate         run the pipeline
@@ -72,7 +74,7 @@ src/app/
   api/annotations      save annotations (dev only)
 
 scripts/               evaluate · iterate · report · analyse · semantic ·
-                       false-positives · ai-probe · ai-vision-test · qa-ui
+                       design · false-positives · ai-probe · ai-vision-test · qa-ui
 docs/                  architecture/ (11 files) · DETECTION-ENGINE.md ·
                        MVP.md · PHASE-2-PLAN.md
 test-dataset/          synthetic/ (60, gitignored, regenerable) · real/
@@ -85,18 +87,18 @@ reports/               real-test-report.html · iterations.json
 
 | Metric | Value |
 |---|---|
-| F1 | **88.6 %** |
-| Precision | 83.8 % |
+| F1 | **95.4 %** |
+| Precision | 96.9 % |
 | Recall | 93.9 % |
 | Geometry (mean IoU) | 85.8 % |
 | Reading order | 100 % |
 | Layout fidelity | 90.6 % |
 | Component accuracy | 87.1 % |
-| False positives / negatives | 6 / 2 |
-| Regions detected / annotated | 37 / 33 |
+| False positives / negatives | 1 / 2 |
+| Regions detected / annotated | 32 / 33 |
 | Time | ~394 ms |
 
-**Synthetic corpus** (60 samples): fidelity 86.9 %, F1 82.3 %, component accuracy
+**Synthetic corpus** (60 samples): fidelity 86.9 %, F1 82.9 %, component accuracy
 87.7 %, build success 100 %, median 259 ms.
 
 ---
@@ -211,7 +213,7 @@ F1 53.7 % → 88.6 % over two sprints, every change measured and gated.
 One change (a page-relative text-height rule) was **reverted** for costing more
 recall than it gained. Full history in `reports/iterations.json`.
 
-### Phase 3 — semantic layer 🟡 half done
+### Phase 3 — semantic layer ✅ except text-dependent types
 
 `src/pipeline/semantic/` turns regions into meaning: Navigation, Hero, Section,
 Footer, Grid, Gallery, Card, Form, Logo, Heading, Subheading, Label, Paragraph,
@@ -226,6 +228,18 @@ measured gap, alignment and width ratio. Inferred grouping nodes carry
 Text-dependent types (PricingCard, Testimonial, FAQItem, Stat, FeatureItem) are
 returned in an `undecidable` list rather than guessed — they are the same
 rectangle as an ordinary card until you read them.
+
+`List` and `Divider` now emit. A List forms from a run of repeated text items —
+navigation links, captions — where a Gallery forms from pictures and a Grid from
+a mix. Divider is deliberately narrow, because in a wireframe a drawn line *is*
+the convention for a line of text: the test is single-line, at most half the
+page's median text height, aspect ≥ 20:1.
+
+A **structural pruning pass** (`src/pipeline/prune/`) removes regions that are
+real ink but not separate components — a control's caption, and fragments inside
+a densely-inked graphic. It runs after structure because both rules need the
+containment tree, and detection is frozen. F1 88.6 % → 95.4 %, precision
+83.8 % → 96.9 %, recall unchanged.
 
 Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tree.
 
@@ -249,21 +263,27 @@ Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tre
 - [ ] **List and Divider** types are declared in the schema but no rule emits
       them yet.
 
-### Phase 4 — AI design engine (not started)
+### Phase 4 — design engine 🟡 first slice done
 
-The stated goal: preserve the detected layout while generating an award-winning
-UI from the validated IR.
-
-- [ ] Consume the semantic IR; treat `direction`, `columns`, `span`, `gap`,
-      `order`, `align` as **fixed**. Only appearance may be invented.
-- [ ] Palette, type scale, spacing rhythm, radius, shadow, motion.
-- [ ] Preserve colours the user already drew, when present.
+- [x] **Design constraint engine** (`src/pipeline/design/`). Palette, type scale,
+      spacing rhythm, radius, shadow, motion — deterministic, no model.
+- [x] **Colours the author drew are preserved.** Hue is kept; only lightness
+      moves, until contrast clears 4.5:1. Monochrome input gets a restrained
+      default that is reported as a default.
+- [x] **Layout drift verification.** `DesignTokensSchema` has no positional
+      field, so the pass cannot express a layout change; `verifyNoDrift` then
+      confirms it did not make one. Asserts 100.00%, does not tolerate a
+      threshold. Currently no drift across 36 nodes.
+- [x] Studio **Design** tab with swatches, type ladder, spacing ladder and the
+      drift verdict.
+- [ ] **Nothing consumes the tokens yet.** `emit/classes.ts` still uses its own
+      hard-coded appearance. Wiring tokens through the emitter is the next slice
+      — and must keep the Code and Preview tabs sharing one mapping.
 - [ ] Generate missing assets — icons, illustrations, placeholder images.
-- [ ] Responsive React/Next.js output from the validated IR.
-- [ ] A fidelity gate: the generated page's real rendered boxes scored against
-      the IR, so "we preserved your layout" stays a measurement rather than a
-      claim. `fidelity/score.ts` already supports this — it was written to
-      compare an IR against *either* ground truth or rendered geometry.
+- [ ] Rendered-geometry fidelity gate: score the *rendered* page against the IR,
+      not just IR against IR.
+- [ ] Optional model pass for stylistic judgment, on top of the deterministic
+      version rather than replacing it.
 
 ### Deferred, with reasons
 
@@ -394,4 +414,5 @@ Surfaces: `/studio` (10-tab inspector) · `/annotate` (ground truth) ·
 
 ---
 
-*Last updated at commit `ad611b6`, after the Phase 3 semantic layer landed.*
+*Last updated after the design constraint engine landed. Verify with
+`node scripts/iterate.ts "session start"` before trusting any number here.*
