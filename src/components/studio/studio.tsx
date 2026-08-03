@@ -62,6 +62,7 @@ export function Studio() {
   const [stage, setStage] = useState<StageId>("upload");
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [ocr, setOcr] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
@@ -73,6 +74,7 @@ export function Studio() {
     try {
       const body = new FormData();
       body.append("file", file);
+      if (ocr) body.append("ocr", "1");
       const response = await fetch("/api/generate", { method: "POST", body });
       const data = await response.json();
 
@@ -88,7 +90,7 @@ export function Studio() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [ocr]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -126,6 +128,19 @@ export function Studio() {
           A photo of a hand drawing, a whiteboard, or an exported wireframe. PNG, JPEG, WebP or AVIF,
           up to 12&nbsp;MB.
         </p>
+
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-foreground-subtle">
+          <input
+            type="checkbox"
+            checked={ocr}
+            onChange={(e) => setOcr(e.target.checked)}
+            className="size-3.5 accent-current"
+          />
+          Read the text in the sketch
+          <span className="text-foreground-subtle/70">
+            — adds roughly 11&nbsp;s; off by default
+          </span>
+        </label>
         <input
           id={inputId}
           ref={inputRef}
@@ -253,16 +268,29 @@ function StagePanel({
 
     case "ocr": {
       const withText = result.ir.nodes.filter((n) => n.content);
+      const o = result.report.ocr;
       if (!withText.length) {
         return (
-          <p className="text-sm text-foreground-subtle">
-            No text was transcribed. The offline heuristic classifier reads geometry only — it cannot
-            read handwriting, and reports that rather than inventing plausible copy. Set{" "}
-            <code className="font-mono">ANTHROPIC_API_KEY</code> to enable the vision pass.
-          </p>
+          <div className="flex flex-col gap-3 text-sm text-foreground-subtle">
+            <p>
+              {o.ran
+                ? `Transcription ran via ${o.engine} but read no legible text from ${o.attempted} region(s).`
+                : "Transcription was not run. Tick “Read the text in the sketch” above and upload again."}
+            </p>
+            {o.note && <p className="text-xs">{o.note}</p>}
+            <p className="text-xs">
+              The offline path reads geometry only. It reports empty text rather than inventing
+              plausible copy, so placeholder strings stay distinguishable from what the author wrote.
+            </p>
+          </div>
         );
       }
       return (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-foreground-subtle">
+            {o.read}/{o.attempted} regions read via {o.engine} in {o.ms} ms
+            {o.note ? ` · ${o.note}` : ""}
+          </p>
         <table className="w-full text-sm">
           <caption className="sr-only">Transcribed text by region</caption>
           <thead className="text-left text-xs uppercase tracking-wider text-foreground-subtle">
@@ -286,6 +314,7 @@ function StagePanel({
             ))}
           </tbody>
         </table>
+        </div>
       );
     }
 

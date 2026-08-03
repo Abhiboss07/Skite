@@ -26,6 +26,9 @@ import { BaseProvider, estimateTokens } from "../base.ts";
 
 const DEFAULT_BASE_URL = "http://localhost:11434";
 
+/** Window requested for image requests. Comfortably fits a batch of crops. */
+const VISION_CONTEXT = 16384;
+
 /**
  * Model families that can read images.
  *
@@ -89,10 +92,9 @@ export class OllamaProvider extends BaseProvider {
       // via constrained decoding.
       jsonSchema: true,
       streaming: true,
-      // Ollama's default context is 4096 unless the Modelfile says otherwise.
-      // Under-promising here is deliberate: the classification prompt is sized
-      // against this number, and overrunning it truncates silently.
-      contextWindow: 4096,
+      // Ollama's default is 4096 unless the Modelfile says otherwise; vision
+      // requests raise it explicitly, since images are token-expensive.
+      contextWindow: VISION_CONTEXT,
     };
   }
 
@@ -203,6 +205,12 @@ export class OllamaProvider extends BaseProvider {
       options: {
         temperature: resolved.temperature,
         num_predict: resolved.maxTokens,
+        // Ollama defaults to a 4096-token window regardless of what the model
+        // supports, and an image costs roughly a thousand tokens — three crops
+        // and a prompt overflow it, with the server returning a 400 rather than
+        // truncating. Vision requests therefore ask for a larger window
+        // explicitly. Text requests keep the default, where it is ample.
+        ...(images ? { num_ctx: VISION_CONTEXT } : {}),
       },
     };
 

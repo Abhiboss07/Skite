@@ -36,6 +36,34 @@ import { emit } from "../src/pipeline/emit/classes.ts";
 import type { ComponentNode } from "../src/pipeline/ir/schema.ts";
 import type { DesignTokens } from "../src/pipeline/design/tokens.ts";
 
+/**
+ * Only the surface this script uses.
+ *
+ * Declared locally rather than imported from `playwright`, because referring to
+ * its types — even inside a cast — makes the package a compile-time dependency
+ * and breaks `npm run build` for anyone who has not installed it. Playwright is
+ * optional at runtime and must stay optional at build time.
+ */
+type Playwright = {
+  chromium: {
+    launch(options?: { executablePath?: string }): Promise<Browser>;
+  };
+};
+
+type Browser = {
+  newPage(options?: { viewport?: { width: number; height: number } }): Promise<Tab>;
+  close(): Promise<void>;
+};
+
+type Tab = {
+  on(event: "pageerror", handler: (error: { message: string }) => void): void;
+  on(event: "console", handler: (message: { type(): string; text(): string }) => void): void;
+  setContent(html: string, options?: { waitUntil?: string; timeout?: number }): Promise<void>;
+  waitForTimeout(ms: number): Promise<void>;
+  screenshot(options: { path: string; fullPage?: boolean }): Promise<unknown>;
+  evaluate<T>(fn: () => T): Promise<T>;
+};
+
 /* ── arguments ─────────────────────────────────────────────────────── */
 
 const argv = process.argv.slice(2);
@@ -48,6 +76,8 @@ const flag = (name: string) => {
 const image = positional[0] ?? "Test Images/website-wireframe-services.jpg";
 const label = flag("label") ?? "current";
 const compareWith = flag("compare");
+/** `--ocr` transcribes the sketch, which is otherwise off. */
+const useOcr = argv.includes("--ocr");
 const viewport = { width: Number(flag("width") ?? 1400), height: Number(flag("height") ?? 1000) };
 
 const slug = basename(image).replace(/\.[^.]+$/, "");
@@ -82,22 +112,128 @@ function toHtml(node: ComponentNode, columns: number, tokens: DesignTokens | und
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+
+/* ── the utility subset the emitter uses ───────────────────────────── */
+
+/**
+ * CSS for exactly the classes the emitter can produce, generated locally.
+ *
+ * This replaced a Tailwind CDN script tag. The CDN worked until it did not, and
+ * when it failed every layout class silently did nothing: the page rendered as
+ * one stacked column and the screenshot looked like a catastrophic regression
+ * that had not happened. Depending on a network for a check whose entire job is
+ * to tell the truth about rendering was the wrong trade — and this project's
+ * stated property is that it works with the wifi unplugged.
+ *
+ * The set is closed and small because `emit()` is a total function over a fixed
+ * vocabulary. Anything it cannot produce is not needed here.
+ */
+function utilityCss(classNames: Set<string>): string {
+  const rules: string[] = [];
+  const md: string[] = [];
+  const space = (n: number) => `${n * 0.25}rem`;
+
+  const rule = (selector: string, body: string, breakpoint: boolean) => {
+    const escaped = selector.replace(/([.:[\]/])/g, "\\$1");
+    (breakpoint ? md : rules).push(`.${escaped}{${body}}`);
+  };
+
+  for (const raw of classNames) {
+    const breakpoint = raw.startsWith("md:");
+    const name = breakpoint ? raw.slice(3) : raw;
+    let body: string | null = null;
+
+    if (name === "flex") body = "display:flex";
+    else if (name === "inline-flex") body = "display:inline-flex";
+    else if (name === "grid") body = "display:grid";
+    else if (name === "flex-col") body = "flex-direction:column";
+    else if (name === "items-start") body = "align-items:flex-start";
+    else if (name === "items-center") body = "align-items:center";
+    else if (name === "justify-center") body = "justify-content:center";
+    else if (name === "justify-between") body = "justify-content:space-between";
+    else if (name === "place-items-center") body = "place-items:center";
+    else if (name === "mx-auto") body = "margin-left:auto;margin-right:auto";
+    else if (name === "w-full") body = "width:100%";
+    else if (name === "w-fit") body = "width:fit-content";
+    else if (name === "relative") body = "position:relative";
+    else if (name === "absolute") body = "position:absolute";
+    else if (name === "inset-0") body = "top:0;right:0;bottom:0;left:0";
+    else if (name === "overflow-hidden") body = "overflow:hidden";
+    else if (name === "pointer-events-none") body = "pointer-events:none";
+    else if (name === "uppercase") body = "text-transform:uppercase";
+    else if (name === "max-w-prose") body = "max-width:65ch";
+    else {
+      let m: RegExpMatchArray | null;
+      if ((m = name.match(/^grid-cols-(\d+)$/)))
+        body = `grid-template-columns:repeat(${m[1]},minmax(0,1fr))`;
+      else if ((m = name.match(/^col-span-(\d+)$/))) body = `grid-column:span ${m[1]}/span ${m[1]}`;
+      else if ((m = name.match(/^gap-(\d+)$/))) body = `gap:${space(Number(m[1]))}`;
+      else if ((m = name.match(/^p-(\d+)$/))) body = `padding:${space(Number(m[1]))}`;
+      else if ((m = name.match(/^px-(\d+)$/)))
+        body = `padding-left:${space(Number(m[1]))};padding-right:${space(Number(m[1]))}`;
+      else if ((m = name.match(/^py-(\d+)$/)))
+        body = `padding-top:${space(Number(m[1]))};padding-bottom:${space(Number(m[1]))}`;
+      else if ((m = name.match(/^max-w-\[(\d+)px\]$/))) body = `max-width:${m[1]}px`;
+    }
+
+    if (body) rule(raw, body, breakpoint);
+  }
+
+  return (
+    `*,*::before,*::after{box-sizing:border-box}` +
+    `body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}` +
+    rules.join("") +
+    (md.length ? `@media(min-width:768px){${md.join("")}}` : "")
+  );
+}
+
+/** Every class name present in a rendered tree. */
+function collectClasses(node: ComponentNode, columns: number, tokens: DesignTokens | undefined, into: Set<string>) {
+  for (const c of emit(node, columns, tokens).className.split(/\s+/)) if (c) into.add(c);
+  for (const child of node.children) collectClasses(child, columns, tokens, into);
+  return into;
+}
+
 /* ── run ───────────────────────────────────────────────────────────── */
 
 const buffer = readFileSync(image);
-const result = await runPipeline(buffer, { classifier: "heuristic", sourceKind: "wireframe" });
+const result = await runPipeline(buffer, {
+  classifier: "heuristic",
+  sourceKind: "wireframe",
+  ocr: useOcr,
+});
 
-// Tailwind is loaded from the CDN because the *layout* half of the output is
-// genuinely Tailwind classes — grid, flex, spans, gaps. The appearance half is
-// inline custom properties and needs nothing. Rendering without Tailwind would
-// test a page the user will never see.
+const classes = collectClasses(
+  result.tree.root,
+  result.ir.canvas.grid.columns,
+  result.design,
+  new Set<string>(),
+);
+// Decoration markup is generated inside toHtml and never passes through emit().
+for (const c of "pointer-events-none absolute inset-0 grid place-items-center".split(" ")) {
+  classes.add(c);
+}
+
 const page = `<!doctype html><html><head><meta charset="utf-8">
-<script src="https://cdn.tailwindcss.com"></script>
+<style>${utilityCss(classes)}</style>
 </head><body style="margin:0;background:#eef1f5;padding:24px">
 ${toHtml(result.tree.root, result.ir.canvas.grid.columns, result.design)}
 </body></html>`;
 
-const { chromium } = await import("playwright");
+// Imported through a variable so TypeScript does not try to resolve it.
+//
+// Playwright is deliberately not a project dependency — it is a few hundred
+// megabytes for a check that runs by hand — but a bare `import("playwright")`
+// is still resolved at compile time, which broke `npm run build` for anyone who
+// had not installed it. An optional runtime dependency should not be a
+// compile-time one.
+const playwrightSpecifier = "playwright";
+const { chromium } = (await import(playwrightSpecifier).catch(() => {
+  throw new Error(
+    "Playwright is not installed. Run: npm install --no-save playwright\n" +
+      "Set CHROMIUM to reuse an already-downloaded browser.",
+  );
+})) as Playwright;
 const browser = await chromium.launch(
   process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {},
 );
@@ -111,6 +247,25 @@ tab.on("console", (m) => {
 
 await tab.setContent(page, { waitUntil: "networkidle", timeout: 60_000 });
 await tab.waitForTimeout(800);
+
+// Verify the stylesheet applied before believing anything on screen. Kept even
+// though the CSS is now local: a render nobody sanity-checked is how the last
+// two rendering bugs survived.
+const tailwindApplied = await tab.evaluate(() => {
+  const probe = document.createElement("div");
+  probe.className = "flex";
+  document.body.appendChild(probe);
+  const ok = getComputedStyle(probe).display === "flex";
+  probe.remove();
+  return ok;
+});
+
+if (!tailwindApplied) {
+  await browser.close();
+  throw new Error(
+    "Layout utilities did not apply, so the render would be misleading.",
+  );
+}
 
 const shot = join(outDir, `${slug}-${label}.png`);
 await tab.screenshot({ path: shot, fullPage: true });
@@ -144,13 +299,25 @@ const wrapped = boxes.filter((b) => b.lines > 1 && b.tag === "h2");
 
 await browser.close();
 
-const record = { label, at: new Date().toISOString(), viewport, boxes, wrapped: wrapped.length };
+/** Boilerplate still present, i.e. text the pipeline could not read. */
+const placeholders = (result.code.match(/Heading goes here|Body copy from your sketch|Get started/g) ?? []).length;
+
+const record = {
+  label,
+  at: new Date().toISOString(),
+  viewport,
+  boxes,
+  wrapped: wrapped.length,
+  placeholders,
+  ocr: result.report.ocr.ran ? `${result.report.ocr.read}/${result.report.ocr.attempted}` : "not run",
+};
 writeFileSync(join(outDir, `${slug}-${label}.json`), JSON.stringify(record, null, 2));
 
 console.log(`render     ${shot}`);
 console.log(`viewport   ${viewport.width}×${viewport.height} · ${boxes.length} nodes`);
 console.log(`build      ${result.report.buildStatus} · ${result.report.validation.issues.length} validation issue(s)`);
 console.log(`IR drift   ${result.drift.ok ? "none" : `${result.drift.violations.length} violation(s)`}`);
+console.log(`transcription: ${result.report.ocr.ran ? `${result.report.ocr.read}/${result.report.ocr.attempted} regions read via ${result.report.ocr.engine}` : "not run"}`);
 console.log(`headings on more than one line: ${wrapped.length}`);
 for (const w of wrapped.slice(0, 6)) {
   console.log(`  ${w.id.padEnd(6)} ${w.w}×${w.h} at ${w.fontSize} — ${w.lines} lines`);
@@ -209,6 +376,11 @@ if (compareWith) {
       <td>${previous?.wrapped ?? "—"}</td>
       <td class="${wrapped.length === 0 ? "good" : "bad"}">${wrapped.length}</td></tr>
   <tr><td>Nodes rendered</td><td>${previous?.boxes.length ?? "—"}</td><td>${boxes.length}</td></tr>
+  <tr><td>Placeholder strings in output</td>
+      <td>${previous?.placeholders ?? "—"}</td>
+      <td>${placeholders}</td></tr>
+  <tr><td>Regions transcribed</td><td>${previous?.ocr ?? "—"}</td>
+      <td>${result.report.ocr.ran ? `${result.report.ocr.read}/${result.report.ocr.attempted}` : "not run"}</td></tr>
   <tr><td>Build</td><td>—</td><td class="${result.report.buildStatus === "passed" ? "good" : "bad"}">${result.report.buildStatus}</td></tr>
   <tr><td>IR layout drift</td><td>—</td><td class="${result.drift.ok ? "good" : "bad"}">${result.drift.ok ? "none" : `${result.drift.violations.length}`}</td></tr>
 </table>

@@ -85,9 +85,14 @@ function realImages(): { id: string; image: string; truth: string }[] {
 }
 
 async function measure(imagePath: string, truthPath: string): Promise<Metrics> {
+    // OCR is refused explicitly rather than merely left unset. `SKITE_OCR=1`
+    // exported into a shell would otherwise turn a sixty-sample benchmark into
+    // a fifteen-minute one, and the harness's speed is what makes measuring
+    // every change practical.
   const result = await runPipeline(readFileSync(imagePath), {
     classifier: "heuristic",
     sourceKind: "wireframe",
+    ocr: false,
   });
   const truth = JSON.parse(readFileSync(truthPath, "utf8")) as {
     canvas: { w: number; h: number };

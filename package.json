@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "dataset": "node test-dataset/generate.ts",
-    "evaluate": "node scripts/evaluate.ts"
+    "evaluate": "node scripts/evaluate.ts",
+    "test": "node --test scripts/test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

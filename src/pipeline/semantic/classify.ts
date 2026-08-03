@@ -478,7 +478,12 @@ export function classifySemantics(ir: IR): SemanticIR {
     source: null,
     inferred: true,
     box: { x: 0, y: 0, w: ir.canvas.w, h: ir.canvas.h },
-    layout: deriveLayout(null, roots, ctx, -1),
+    // Order 0, not -1. The document root has no position among siblings — there
+    // are none — and -1 was chosen to express "before everything", which the
+    // schema rejects because `order` is a non-negative index. The IR then failed
+    // its own validation on every run, and the warning was reported rather than
+    // acted on for two releases.
+    layout: deriveLayout(null, roots, ctx, 0),
     evidence: { rule: "structure.page", confidence: 1, because: ["document root"] },
     text: null,
     children: folded,

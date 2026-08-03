@@ -59,13 +59,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Transcription is opt-in per request: it costs ~11s against ~400ms for
+  // everything else, so it must never be the default.
+  const ocr = form.get("ocr") === "1" || form.get("ocr") === "true";
+
   const classifierParam = form.get("classifier");
   const classifier =
     classifierParam === "heuristic" || classifierParam === "vision" ? classifierParam : "auto";
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await runPipeline(buffer, { classifier, sourceKind: "photo" });
+    const result = await runPipeline(buffer, { classifier, sourceKind: "photo", ocr });
 
     return NextResponse.json({
       ok: result.ok,

@@ -19,6 +19,7 @@ import { synthesizeDeterministic } from "./synthesize/deterministic.ts";
 import { emitTsx, usedComponents } from "./emit/tsx.ts";
 import { validateCode, type Validation } from "./validate/check.ts";
 import { prune } from "./prune/prune.ts";
+import { ocrRequested, readText, type OcrResult } from "./ocr/read.ts";
 import { classifySemantics } from "./semantic/classify.ts";
 import { generateDesign } from "./design/engine.ts";
 import { verifyNoDrift, type DriftReport } from "./design/verify.ts";
@@ -31,6 +32,13 @@ export type PipelineOptions = {
   /** "auto" uses the vision model when a key is available, else the heuristic. */
   classifier?: "auto" | "heuristic" | "vision";
   sourceKind?: IR["source"]["kind"];
+  /**
+   * Transcribe the text in the drawing. Off unless asked for, here or via
+   * SKITE_OCR — it costs ~17s against ~400ms for everything else.
+   */
+  ocr?: boolean;
+  /** Which provider to read with. Defaults to the configured one (Ollama). */
+  ocrProvider?: string | null;
 };
 
 export type PipelineResult = {
@@ -61,6 +69,7 @@ export type RunReport = {
   nodeCount: number;
   grid: IR["canvas"]["grid"];
   buildStatus: "passed" | "failed";
+  ocr: { ran: boolean; engine: string; read: number; attempted: number; confidence: number; ms: number; note: string | null };
   validation: Validation;
   textExtracted: boolean;
 };
@@ -109,9 +118,10 @@ export async function runPipeline(
   // it either way, which is how you inspect what the model would receive.
   const prompt = buildClassificationPrompt(structured);
 
-  const wantsVision =
-    options.classifier === "vision" ||
-    (options.classifier !== "heuristic" && Boolean(process.env.ANTHROPIC_API_KEY));
+  // Role classification by model is explicit-only. "auto" previously probed for
+  // ANTHROPIC_API_KEY, which predates the provider layer and told every user of
+  // a machine configured for Ollama that no model was available.
+  const wantsVision = options.classifier === "vision";
 
   let classification: Classification & { engine: string };
   const classifyStart = Date.now();
@@ -129,12 +139,9 @@ export async function runPipeline(
     }
   } else {
     classification = classifyHeuristic(structured);
-    if (options.classifier !== "heuristic") {
-      warnings.push(
-        "ANTHROPIC_API_KEY is not set, so the offline heuristic classifier was used. " +
-          "Roles are inferred from geometry only and no handwriting is read.",
-      );
-    }
+    // No warning here. The offline classifier is the default and the baseline,
+    // not a degraded mode — saying so on every run trained everyone to read
+    // past the warnings panel.
   }
   passes.push({ pass: "classify", engine: classification.engine, ms: Date.now() - classifyStart });
 
@@ -210,6 +217,26 @@ export async function runPipeline(
     warnings.push(`IR failed its own schema: ${parsed.error.issues[0]?.message ?? "unknown"}`);
   }
 
+  // ── 4c transcription ─────────────────────────────────────────────
+  // Optional, and after the IR is validated: the model fills a field in a
+  // structure whose shape is already fixed. It cannot move a box, add a region
+  // or change a role — the schema it answers with has no channel for any of it.
+  let ocrResult: OcrResult | null = null;
+  if (ocrRequested(options.ocr)) {
+    ocrResult = await readText(ir, pre.workingPng, { provider: options.ocrProvider });
+    passes.push({ pass: "ocr", engine: ocrResult.engine, ms: ocrResult.ms });
+
+    if (ocrResult.ran) {
+      // Re-point the IR at the enriched nodes. Only `content` differs.
+      ir.nodes = ocrResult.nodes;
+      ir.confidence.ocr = round(ocrResult.confidence);
+      ir.confidence.overall = round(
+        layoutConfidence * 0.5 + componentConfidence * 0.35 + ocrResult.confidence * 0.15,
+      );
+    }
+    if (ocrResult.note) warnings.push(`Transcription: ${ocrResult.note}`);
+  }
+
   // ── 5 semantics ──────────────────────────────────────────────────
   // Runs on the validated IR, and reads it without writing to it. Detection is
   // frozen; a semantic pass able to adjust a box would be a second detector.
@@ -271,6 +298,15 @@ export async function runPipeline(
     nodeCount: nodes.length,
     grid: ir.canvas.grid,
     buildStatus: validation.ok ? "passed" : "failed",
+    ocr: {
+      ran: ocrResult?.ran ?? false,
+      engine: ocrResult?.engine ?? "not run",
+      read: ocrResult?.regionsRead ?? 0,
+      attempted: ocrResult?.regionsAttempted ?? 0,
+      confidence: ocrResult?.confidence ?? 0,
+      ms: ocrResult?.ms ?? 0,
+      note: ocrResult?.note ?? null,
+    },
     validation,
     textExtracted: nodes.some((n) => n.content !== null),
   };

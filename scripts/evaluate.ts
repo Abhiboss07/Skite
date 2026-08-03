@@ -134,7 +134,11 @@ for (const sample of samples) {
   const started = Date.now();
   let result;
   try {
-    result = await runPipeline(image, { classifier, sourceKind: "synthetic" });
+    // OCR is refused explicitly rather than merely left unset. `SKITE_OCR=1`
+    // exported into a shell would otherwise turn a sixty-sample benchmark into
+    // a fifteen-minute one, and the harness's speed is what makes measuring
+    // every change practical.
+    result = await runPipeline(image, { classifier, sourceKind: "synthetic", ocr: false });
   } catch (error) {
     console.log(`  ${sample.id.padEnd(16)} FAILED  ${(error as Error).message}`);
     results.push({
