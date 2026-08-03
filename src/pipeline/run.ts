@@ -18,6 +18,8 @@ import { buildClassificationPrompt } from "./prompts/classify.ts";
 import { synthesizeDeterministic } from "./synthesize/deterministic.ts";
 import { emitTsx, usedComponents } from "./emit/tsx.ts";
 import { validateCode, type Validation } from "./validate/check.ts";
+import { classifySemantics } from "./semantic/classify.ts";
+import { SemanticIRSchema, type SemanticIR } from "./semantic/schema.ts";
 import type { Classification, ComponentTree, IR, IRNode } from "./ir/schema.ts";
 import { IRSchema } from "./ir/schema.ts";
 
@@ -31,6 +33,8 @@ export type PipelineResult = {
   ok: boolean;
   ir: IR;
   tree: ComponentTree;
+  /** The semantic layer: what the regions mean, derived after the IR validates. */
+  semantic: SemanticIR;
   code: string;
   prompt: string;
   /** Base64 PNGs for the debug UI. */
@@ -186,6 +190,17 @@ export async function runPipeline(
     warnings.push(`IR failed its own schema: ${parsed.error.issues[0]?.message ?? "unknown"}`);
   }
 
+  // ── 5 semantics ──────────────────────────────────────────────────
+  // Runs on the validated IR, and reads it without writing to it. Detection is
+  // frozen; a semantic pass able to adjust a box would be a second detector.
+  const semantic = classifySemantics(ir);
+  passes.push({ pass: "semantics", engine: semantic.engine, ms: semantic.ms });
+
+  const semanticCheck = SemanticIRSchema.safeParse(semantic);
+  if (!semanticCheck.success) {
+    warnings.push(`Semantic IR failed its own schema: ${semanticCheck.error.issues[0]?.message ?? "unknown"}`);
+  }
+
   // ── 6 synthesise + emit ──────────────────────────────────────────
   const synthStart = Date.now();
   const { tree, engine } = synthesizeDeterministic(ir);
@@ -221,6 +236,7 @@ export async function runPipeline(
     ok: nodes.length > 0 && validation.ok,
     ir,
     tree,
+    semantic,
     code,
     prompt,
     images: {

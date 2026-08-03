@@ -650,5 +650,52 @@
       "ms": 263.93333333333334
     },
     "gate": "mixed"
+  },
+  {
+    "iteration": 14,
+    "label": "semantic layer added — detector unchanged",
+    "at": "2026-08-03T04:34:03.067Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9059370579095606,
+        "geometry": 0.8583799450007829,
+        "order": 1,
+        "coverage": 0.9393939393939394,
+        "componentAccuracy": 0.8709677419354839,
+        "precision": 0.8378378378378378,
+        "recall": 0.9393939393939394,
+        "f1": 0.8857142857142858,
+        "falsePositives": 6,
+        "falseNegatives": 2,
+        "detected": 37,
+        "annotated": 33,
+        "correct": 27,
+        "ms": 394
+      }
+    },
+    "real": {
+      "fidelity": 0.9059370579095606,
+      "geometry": 0.8583799450007829,
+      "order": 1,
+      "coverage": 0.9393939393939394,
+      "componentAccuracy": 0.8709677419354839,
+      "precision": 0.8378378378378378,
+      "recall": 0.9393939393939394,
+      "f1": 0.8857142857142858,
+      "falsePositives": 6,
+      "falseNegatives": 2,
+      "detected": 37,
+      "annotated": 33,
+      "correct": 27,
+      "ms": 394
+    },
+    "synthetic": {
+      "fidelity": 0.8690825376888459,
+      "f1": 0.8226723420642456,
+      "componentAccuracy": 0.876865495615496,
+      "coverage": 0.8112037037037034,
+      "ms": 259.46666666666664
+    },
+    "gate": "mixed"
   }
 ]

@@ -6,6 +6,7 @@ import { useCallback, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { PreviewTree } from "@/pipeline/emit/runtime";
 import type { ComponentTree, IR } from "@/pipeline/ir/schema";
+import type { SemanticIR, SemanticNode } from "@/pipeline/semantic/schema";
 import type { RunReport } from "@/pipeline/run";
 
 import { BoxOverlay, RoleLegend } from "./overlay";
@@ -25,6 +26,7 @@ type Result = {
   ok: boolean;
   ir: IR;
   tree: ComponentTree;
+  semantic: SemanticIR;
   code: string;
   prompt: string;
   images: { working: string; cleaned: string };
@@ -39,6 +41,7 @@ const STAGES = [
   { id: "ocr", label: "OCR", hint: "Text transcribed from the drawing." },
   { id: "components", label: "Components", hint: "Regions with their assigned roles and confidences." },
   { id: "layout", label: "Layout boxes", hint: "The inferred grid, and which regions snapped to it." },
+  { id: "semantic", label: "Semantic", hint: "What each region means, and the rule that decided it." },
   { id: "ir", label: "IR", hint: "The intermediate representation every later stage reads." },
   { id: "prompt", label: "Prompt", hint: "Exactly what the classification model is sent." },
   { id: "code", label: "Code", hint: "The generated component." },
@@ -349,8 +352,37 @@ function StagePanel({
         </div>
       );
 
+    case "semantic":
+      return (
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
+          <SemanticOverlay semantic={result.semantic} image={result.images.working} />
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-foreground-subtle">
+              {Object.entries(result.semantic.summary)
+                .sort((a, b) => b[1] - a[1])
+                .map(([t, n]) => `${t}×${n}`)
+                .join(" · ")}
+            </p>
+            <div className="max-h-[34rem] overflow-auto rounded-xl border border-white/10 bg-black/30 p-3">
+              <SemanticTree node={result.semantic.root} />
+            </div>
+            {result.semantic.undecidable.length > 0 && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-300">
+                Not decidable without reading the text:{" "}
+                {result.semantic.undecidable.join(", ")}. These types are distinguished by what a
+                region says, not by its shape — reported as undecidable rather than guessed.
+              </p>
+            )}
+          </div>
+        </div>
+      );
+
     case "ir":
-      return <Pre text={JSON.stringify(result.ir, null, 2)} />;
+      return (
+        <Pre
+          text={JSON.stringify({ detection: result.ir, semantic: result.semantic }, null, 2)}
+        />
+      );
 
     case "prompt":
       return <Pre text={result.prompt} />;
@@ -371,6 +403,88 @@ function StagePanel({
         </div>
       );
   }
+}
+
+/** Colour by semantic family, so the tree and the overlay read together. */
+const TYPE_COLOUR: Record<string, string> = {
+  Page: "#94a3b8", Navigation: "#38bdf8", Hero: "#a78bfa", Section: "#64748b", Footer: "#475569",
+  Grid: "#c084fc", Gallery: "#22d3ee", List: "#818cf8", Card: "#60a5fa", Stack: "#6b7280", Form: "#f472b6",
+  Logo: "#fbbf24", Heading: "#ec4899", Subheading: "#f472b6", Label: "#fb923c", Paragraph: "#fdba74",
+  Image: "#34d399", Icon: "#10b981", Divider: "#4b5563",
+  Button: "#facc15", CTAButton: "#eab308", Link: "#fde047", Input: "#f59e0b",
+  Unknown: "#ef4444",
+};
+
+const colourOf = (type: string) => TYPE_COLOUR[type] ?? "#9ca3af";
+
+function SemanticTree({ node, depth = 0 }: { node: SemanticNode; depth?: number }) {
+  const l = node.layout;
+  return (
+    <div style={{ paddingLeft: depth ? 14 : 0 }}>
+      <div className="flex flex-wrap items-baseline gap-x-2 py-0.5 font-mono text-xs">
+        <span style={{ color: colourOf(node.type) }} className="font-semibold">
+          {node.type}
+        </span>
+        {node.inferred && <span className="text-foreground-subtle italic">inferred</span>}
+        <span className="text-foreground-subtle">
+          {Math.round(node.box.w)}×{Math.round(node.box.h)} · span {l.span}
+          {l.direction !== "none" && ` · ${l.direction}${l.direction === "row" ? `×${l.columns}` : ""} gap ${l.gap} ${l.align}`}
+        </span>
+        <span className="text-foreground-subtle">
+          {(node.evidence.confidence * 100).toFixed(0)}% {node.evidence.rule}
+        </span>
+      </div>
+      {node.children.map((child) => (
+        <SemanticTree key={child.id} node={child} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+function SemanticOverlay({ semantic, image }: { semantic: SemanticIR; image: string }) {
+  // Flattened, because the overlay draws every node regardless of depth.
+  const flat: SemanticNode[] = [];
+  const walk = (n: SemanticNode) => {
+    if (n.type !== "Page") flat.push(n);
+    n.children.forEach(walk);
+  };
+  walk(semantic.root);
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-white/10">
+      {/* eslint-disable-next-line @next/next/no-img-element -- data: URL from the pipeline */}
+      <img src={image} alt="" className="block w-full" />
+      <svg
+        viewBox={`0 0 ${semantic.canvas.w} ${semantic.canvas.h}`}
+        className="absolute inset-0 h-full w-full"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`${flat.length} semantic components`}
+      >
+        {flat.map((n) => {
+          const c = colourOf(n.type);
+          return (
+            <g key={n.id}>
+              <rect
+                x={n.box.x}
+                y={n.box.y}
+                width={n.box.w}
+                height={n.box.h}
+                fill={c}
+                fillOpacity={n.inferred ? 0.03 : 0.08}
+                stroke={c}
+                strokeWidth={n.inferred ? 2 : 3}
+                strokeDasharray={n.inferred ? "12 8" : undefined}
+              />
+              <text x={n.box.x + 6} y={n.box.y + 24} fontSize={20} fill={c} className="font-mono">
+                {n.type}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 function Pre({ text }: { text: string }) {
