@@ -16,8 +16,8 @@ pipeline is deliberately computer-vision-first and deterministic; a language
 model is optional and confined to jobs that genuinely need one. Phase 1 (the
 marketing site) and Phase 2 (the detection engine) are complete and frozen.
 Phase 3 (semantic understanding) is complete except for text-dependent types.
-Phase 4 (the design engine) has its first slice: a deterministic design
-constraint engine that generates tokens and proves it moved no layout.
+Phase 4 (the design engine) has two slices: a deterministic design constraint
+engine that generates tokens, and an emitter that consumes them.
 
 Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 
@@ -34,6 +34,7 @@ Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 | `v2.0-mvp-vertical-slice` | End-to-end pipeline: sketch → working React component |
 | `v1.0-detection-engine` | **Detection frozen.** Detector unchanged since. |
 | `v1.1-semantic-design` | Post-structure pruning, List/Divider, design constraint engine. F1 95.4 % |
+| `v1.2-tokenised-emit` | Emitter consumes design tokens; appearance and layout separated in the output |
 
 ### Stack
 
@@ -106,7 +107,8 @@ reports/               real-test-report.html · iterations.json
 ## 2 · Architecture, and why it is this way
 
 ```
-image → preprocess → detect → structure → classify → IR → semantics → synthesise → emit → validate
+image → preprocess → detect → structure → classify → prune → IR → semantics
+      → design → synthesise → emit → validate
         └──────────── deterministic CV, no model, ~400 ms ────────────┘
                                           ↑
                               optional vision model (Ollama / Claude / …)
@@ -276,9 +278,15 @@ Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tre
       threshold. Currently no drift across 36 nodes.
 - [x] Studio **Design** tab with swatches, type ladder, spacing ladder and the
       drift verdict.
-- [ ] **Nothing consumes the tokens yet.** `emit/classes.ts` still uses its own
-      hard-coded appearance. Wiring tokens through the emitter is the next slice
-      — and must keep the Code and Preview tabs sharing one mapping.
+- [x] **The emitter consumes the tokens.** `emit/classes.ts` is still the single
+      mapping; `className` now carries layout only and `style` carries appearance
+      only, every value a `var(--sk-*)` reference with a fallback. The generated
+      page hoists its tokens into a `designTokens` constant and needs no
+      stylesheet, config or build step.
+- [ ] **Type sizes are not calibrated against the drawing.** The scale's *ratio*
+      comes from the sketch but its absolute base is a fixed 1rem, so generated
+      text runs larger than drawn — nav labels render at ~32px and wrap. Anchor
+      `baseSize` to the measured median text height.
 - [ ] Generate missing assets — icons, illustrations, placeholder images.
 - [ ] Rendered-geometry fidelity gate: score the *rendered* page against the IR,
       not just IR against IR.
@@ -334,6 +342,13 @@ post-IR.
 
 **"HEADLINE" types as Paragraph** in the semantic tree — the frozen detector
 merges it with the line beneath into one text block. Inherited, not introduced.
+
+**Generated type runs larger than drawn.** The type scale's ratio is measured
+from the sketch; its absolute base is not. Navigation labels come out around
+32px and wrap onto two lines. The layout structure is unaffected — order,
+spans, nesting and direction are verified identical — but the rendered page is
+typographically louder than the drawing. Calibrating `baseSize` against the
+measured median text height is the fix.
 
 ---
 
