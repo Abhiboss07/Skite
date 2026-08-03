@@ -35,6 +35,7 @@ Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 | `v1.0-detection-engine` | **Detection frozen.** Detector unchanged since. |
 | `v1.1-semantic-design` | Post-structure pruning, List/Divider, design constraint engine. F1 95.4 % |
 | `v1.2-tokenised-emit` | Emitter consumes design tokens; appearance and layout separated in the output |
+| `v1.3-type-calibration` | Type scale anchored to the drawing; visual regression check added |
 
 ### Stack
 
@@ -75,7 +76,8 @@ src/app/
   api/annotations      save annotations (dev only)
 
 scripts/               evaluate · iterate · report · analyse · semantic ·
-                       design · false-positives · ai-probe · ai-vision-test · qa-ui
+                       design · visual-check · false-positives · ai-probe ·
+                       ai-vision-test · qa-ui
 docs/                  architecture/ (11 files) · DETECTION-ENGINE.md ·
                        MVP.md · PHASE-2-PLAN.md
 test-dataset/          synthetic/ (60, gitignored, regenerable) · real/
@@ -283,10 +285,11 @@ Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tre
       only, every value a `var(--sk-*)` reference with a fallback. The generated
       page hoists its tokens into a `designTokens` constant and needs no
       stylesheet, config or build step.
-- [ ] **Type sizes are not calibrated against the drawing.** The scale's *ratio*
-      comes from the sketch but its absolute base is a fixed 1rem, so generated
-      text runs larger than drawn — nav labels render at ~32px and wrap. Anchor
-      `baseSize` to the measured median text height.
+- [x] **Type is calibrated against the drawing.** The step is chosen relative to
+      the page's median line height, in synthesis; `baseSize` is anchored to the
+      measured text ink height, clamped to 0.875–1.25rem because a drawing fixes
+      proportions rather than absolute type size. Headings wrapping onto two
+      lines went 5 → 1, and the remaining one is a heading in a 271px column.
 - [ ] Generate missing assets — icons, illustrations, placeholder images.
 - [ ] Rendered-geometry fidelity gate: score the *rendered* page against the IR,
       not just IR against IR.
@@ -343,13 +346,6 @@ post-IR.
 **"HEADLINE" types as Paragraph** in the semantic tree — the frozen detector
 merges it with the line beneath into one text block. Inherited, not introduced.
 
-**Generated type runs larger than drawn.** The type scale's ratio is measured
-from the sketch; its absolute base is not. Navigation labels come out around
-32px and wrap onto two lines. The layout structure is unaffected — order,
-spans, nesting and direction are verified identical — but the rendered page is
-typographically louder than the drawing. Calibrating `baseSize` against the
-measured median text height is the fix.
-
 ---
 
 ## 6 · Environment
@@ -367,6 +363,12 @@ measured median text height is the fix.
 ---
 
 ## 7 · Working agreement
+
+**Look at it.** A build that compiles and a validator that passes say nothing
+about whether a page renders — both were green while the generated component
+painted as unstyled text on a blank background. Run
+`node scripts/visual-check.ts "<image>" --label after --compare before` for any
+change that touches appearance, and open the comparison.
 
 **Measure, then change.** Every detector or semantic change must be run through
 `node scripts/iterate.ts "label"`, which scores both corpora and applies the
@@ -408,6 +410,9 @@ node scripts/analyse.ts "Test Images/<file>"  # stage-by-stage console output
 node scripts/semantic.ts "Test Images/<file>" # semantic tree
 node scripts/false-positives.ts "<file>"      # enumerate and characterise FPs
 node scripts/ai-probe.ts                      # provider health + live test
+node scripts/visual-check.ts "<image>" --label after --compare before
+                                              # render, count wrapped headings,
+                                              # write a 3-panel comparison
 ```
 
 Surfaces: `/studio` (10-tab inspector) · `/annotate` (ground truth) ·
