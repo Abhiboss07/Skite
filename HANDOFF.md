@@ -37,6 +37,7 @@ Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 | `v1.2-tokenised-emit` | Emitter consumes design tokens; appearance and layout separated in the output |
 | `v1.3-type-calibration` | Type scale anchored to the drawing; visual regression check added |
 | `v1.4-ocr-wired` | Opt-in transcription via Ollama; semantic IR schema bug fixed; `npm test` added |
+| `v1.5-ocr-trust` | One image per OCR request (11/19, zero wrong); per-region confidence in the UI |
 
 ### Stack
 
@@ -270,11 +271,13 @@ Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tre
       detection does not have — so this belongs *after* structure, not inside the
       frozen detector.
 - [ ] **Text-dependent types**: PricingCard, Testimonial, FAQItem, Stat,
-      FeatureItem. No longer blocked on OCR existing — it now does — but blocked
-      on it being *reliable enough*. At 9/19 regions with uncalibrated
-      confidence, classifying a card as a PricingCard on what was read would be
-      building on sand. Needs either a larger vision model or per-region
-      confidence that means something.
+      FeatureItem. Still deferred. Reads are now accurate (11/19, none wrong) and
+      per-region confidence is visible, which removes the two objections from
+      last session — but the remaining one is the important one: **there is no
+      ground truth for text**, so "reads are accurate" is an eyeball judgement on
+      one wireframe, not a measurement. Classifying a card as a PricingCard on
+      the strength of an unmeasured read would put an unverifiable claim into the
+      IR. Needs text in the annotation format and an OCR accuracy metric first.
 - [ ] **List and Divider** types are declared in the schema but no rule emits
       them yet.
 
@@ -342,13 +345,19 @@ draws sections as detached rectangles with clean gaps, and never draws display
 type or halftone illustrations. All three broke the detector in ways no synthetic
 sample reproduced.
 
-**OCR is opt-in and partial.** `ocr: true` or `SKITE_OCR=1` transcribes through
-Ollama; off by default because it costs ~11s against ~400ms for everything else.
-On the test wireframe it reads 9 of 19 regions — nav labels and button text
-reliably, but nothing for the logo or the hero headline despite both being large
-and legible. Its confidence is *not calibrated*: it reported 96% mean while
-getting two of nine regions wrong. Treat transcription as a convenience, not as
-a measured capability, until there is ground truth for text.
+**OCR is opt-in.** `ocr: true` or `SKITE_OCR=1` transcribes through Ollama; off
+by default because it costs ~18s against ~400ms for everything else. On the test
+wireframe it reads 11 of 19 regions with **no wrong reads**; the other eight are
+blank ruled lines, an empty field and a divider, which genuinely contain no text.
+
+One crop per request, always. Batching crops made the model attribute one
+region's text to another's id, and that is now asserted by a test.
+
+**Confidence is still the model's own opinion and is not calibrated.** It has
+reported 96% while misattributing. Every read therefore also carries `fits` — an
+independent check that the transcription is a plausible length for its box — and
+the OCR tab shows both per region rather than an average. Two signals have to
+agree before a read is trustworthy.
 
 The offline path still reads nothing, and reports empty text at zero confidence
 rather than inventing plausible copy.
@@ -362,8 +371,13 @@ than presenting a guess as a measurement.
 everything else combined. This is the argument for keeping vision optional and
 post-IR.
 
-**"HEADLINE" types as Paragraph** in the semantic tree — the frozen detector
-merges it with the line beneath into one text block. Inherited, not introduced.
+**The hero headline merges with the line beneath it.** The frozen detector folds
+the headline glyphs and the following line into one region, so the semantic layer
+types it as a Paragraph and — with OCR on — the generated page renders
+"HEADLINE Lorem ipsum dolor sit amet…" at display size across three lines. The
+transcription is correct; the presentation is not. The artefact predates OCR, but
+real text makes it obvious where placeholder copy hid it. Fixing it properly
+means splitting the region, which is inside the frozen detector.
 
 ---
 
@@ -435,7 +449,7 @@ node scripts/analyse.ts "Test Images/<file>"  # stage-by-stage console output
 node scripts/semantic.ts "Test Images/<file>" # semantic tree
 node scripts/false-positives.ts "<file>"      # enumerate and characterise FPs
 node scripts/ai-probe.ts                      # provider health + live test
-node scripts/ocr.ts "<image>"                 # transcription, opt-in
+node scripts/ocr.ts "<image>"                 # transcription, opt-in (~18s)
 SKITE_OCR=1 …                                 # or per-run: { ocr: true }
 node scripts/visual-check.ts "<image>" --label after --compare before
                                               # render, count wrapped headings,
