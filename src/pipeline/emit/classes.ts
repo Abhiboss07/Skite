@@ -138,8 +138,13 @@ const FALLBACK: Record<string, string> = {
 /** `var(--sk-x, fallback)` — never a bare reference. */
 const v = (name: string) => `var(${name}, ${FALLBACK[name] ?? "initial"})`;
 
+export const TYPE_STEPS = [
+  "display", "heading", "subheading", "body", "label", "caption",
+] as const;
+export type TypeStepName = (typeof TYPE_STEPS)[number];
+
 /** Inline style for one step of the type scale. */
-function typeStyle(name: "display" | "heading" | "subheading" | "body" | "label" | "caption") {
+function typeStyle(name: TypeStepName) {
   return {
     fontSize: v(`--sk-${name}-size`),
     lineHeight: v(`--sk-${name}-lh`),
@@ -254,10 +259,16 @@ export function emit(
       };
 
     case "Heading": {
-      // Which step, from the measured box: a heading drawn twice as tall was
-      // meant to be twice as loud. The measurement chooses the rung; the design
-      // engine decides how far apart the rungs are.
-      const step = minHeight >= 88 ? "display" : minHeight >= 56 ? "heading" : "subheading";
+      // The step is decided in synthesis, relative to the page's own text —
+      // see `typeStepFor`. The fallback keeps this function total for a tree
+      // built before that prop existed.
+      const step = TYPE_STEPS.includes(str(props.typeStep) as TypeStepName)
+        ? (str(props.typeStep) as TypeStepName)
+        : minHeight >= 88
+          ? "display"
+          : minHeight >= 56
+            ? "heading"
+            : "subheading";
       return {
         tag: "h2",
         className: `${span}`.trim(),
@@ -266,13 +277,17 @@ export function emit(
       };
     }
 
-    case "Paragraph":
+    case "Paragraph": {
+      const step = TYPE_STEPS.includes(str(props.typeStep) as TypeStepName)
+        ? (str(props.typeStep) as TypeStepName)
+        : "body";
       return {
         tag: "p",
         className: `${span} max-w-prose`.trim(),
-        style: { color: v("--sk-muted"), ...typeStyle("body") },
+        style: { color: v("--sk-muted"), ...typeStyle(step) },
         text: text || "Body copy",
       };
+    }
 
     case "Button":
       return {

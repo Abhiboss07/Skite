@@ -196,7 +196,32 @@ function buildTypeScale(ir: SemanticIR): { scale: TypeScale; because: string } {
     Math.abs(i.ratio - perStep) < Math.abs(best.ratio - perStep) ? i : best,
   );
 
-  const base = 1;
+  // ── the absolute anchor ──────────────────────────────────────────
+  //
+  // The ratio says how much bigger a heading is than body text. It says nothing
+  // about how big body text should be, and a fixed 1rem base ignored the
+  // drawing entirely.
+  //
+  // `bodyH` is the *ink* height of a line — roughly its cap height — so the
+  // font size that produced it is about 1/0.72 larger. The canvas is 1440 wide
+  // and the generated page renders into a container of the same width, so a
+  // canvas pixel is a CSS pixel and no further scaling is needed.
+  //
+  // The result is then clamped, and the clamp is the honest part. A wireframe
+  // is drawn at whatever size the paper or artboard happened to be; it fixes
+  // proportions, not absolute type sizes. A drawing whose body ink is 40px tall
+  // is not asking for 55px body copy on the web, it is asking for *large* body
+  // copy. Clamping to a readable band keeps the measurement meaningful without
+  // letting an arbitrary artboard dictate an unusable page — and when the clamp
+  // binds, the rationale says so rather than presenting the result as measured.
+  const CAP_HEIGHT_RATIO = 0.72;
+  const measuredPx = bodyH / CAP_HEIGHT_RATIO;
+  const measuredRem = measuredPx / 16;
+  const MIN_REM = 0.875;
+  const MAX_REM = 1.25;
+  const base = Math.round(Math.max(MIN_REM, Math.min(MAX_REM, measuredRem)) * 1000) / 1000;
+  const clamped = measuredRem < MIN_REM || measuredRem > MAX_REM;
+
   const step = (n: number) => Math.round(base * chosen.ratio ** n * 1000) / 1000;
 
   // A ratio below 1 means the measurement is not describing type contrast —
@@ -214,11 +239,16 @@ function buildTypeScale(ir: SemanticIR): { scale: TypeScale; because: string } {
       label: { size: step(-1), lineHeight: 1.4, weight: 500, tracking: 0.01 },
       caption: { size: step(-2), lineHeight: 1.4, weight: 400, tracking: 0.02 },
     },
-    because: trustworthy
-      ? `heading is ${measured.toFixed(2)}× body in the drawing, so ${chosen.ratio} ` +
-        `(${chosen.name}) per step`
-      : `could not measure type contrast (heading read as ${measured.toFixed(2)}× body, ` +
-        `which is impossible) — fell back to ${chosen.ratio} (${chosen.name})`,
+    because:
+      (trustworthy
+        ? `heading is ${measured.toFixed(2)}× body in the drawing, so ${chosen.ratio} ` +
+          `(${chosen.name}) per step`
+        : `could not measure type contrast (heading read as ${measured.toFixed(2)}× body, ` +
+          `which is impossible) — fell back to ${chosen.ratio} (${chosen.name})`) +
+      `; body ink measures ${bodyH.toFixed(0)}px, implying ${measuredRem.toFixed(2)}rem` +
+      (clamped
+        ? `, clamped to ${base}rem — a drawing fixes proportions, not absolute type size`
+        : `, used as the base`),
   };
 }
 
@@ -295,7 +325,7 @@ export async function generateDesign(
 
   /* — type — */
   const { scale, because: typeBecause } = buildTypeScale(ir);
-  rationale.push({ token: "type.ratio", because: typeBecause });
+  rationale.push({ token: "type.scale", because: typeBecause });
 
   /* — spacing — */
   // The ladder is built from the base unit the detector measured, so the

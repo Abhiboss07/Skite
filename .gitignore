@@ -47,3 +47,7 @@ next-env.d.ts
 
 # Intermediate artefacts; the HTML report is self-contained.
 /reports/assets/
+
+# Rendered comparisons are large and regenerable; keep the HTML report only.
+/reports/visual/*.png
+/reports/visual/*.json

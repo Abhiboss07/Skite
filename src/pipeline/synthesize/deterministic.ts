@@ -187,8 +187,39 @@ function quantise(value: number, unit: number): number {
   return Math.max(unit, Math.round(value / unit) * unit);
 }
 
+/**
+ * Which step of the type scale a text node should use.
+ *
+ * Relative to the page's own text, not to absolute pixels. The previous rule
+ * compared a node's height against fixed thresholds (88px, 56px), which is a
+ * statement about resolution rather than about typography: on this canvas a
+ * 20px-tall navigation label cleared the lowest threshold and was rendered at
+ * the `subheading` step — 32px — where it wrapped onto two lines.
+ *
+ * Measuring against the page's median line height asks the question that
+ * actually matters: is this text bigger than the text around it, and by how
+ * much?
+ */
+function typeStepFor(lineHeight: number, medianLineHeight: number): string {
+  const ratio = lineHeight / Math.max(1, medianLineHeight);
+  if (ratio >= 3) return "display";
+  if (ratio >= 1.9) return "heading";
+  if (ratio >= 1.25) return "subheading";
+  if (ratio <= 0.8) return "label";
+  return "body";
+}
+
 export function synthesizeDeterministic(ir: IR): { tree: { root: ComponentNode }; engine: string } {
   const byId = new Map(ir.nodes.map((n) => [n.id, n]));
+
+  // Median height of a single line of text on this page.
+  const lineHeights = ir.nodes
+    .filter((n) => n.role === "heading" || n.role === "paragraph")
+    .map((n) => n.box.h / Math.max(1, n.evidence.lines))
+    .sort((a, b) => a - b);
+  const medianLineHeight = lineHeights.length
+    ? lineHeights[Math.floor(lineHeights.length / 2)]
+    : 20;
   const roots = ir.nodes.filter((n) => n.parent === null).sort((a, b) => a.order - b.order);
   const baseUnit = ir.canvas.grid.baseUnit;
 
@@ -245,6 +276,16 @@ export function synthesizeDeterministic(ir: IR): { tree: { root: ComponentNode }
     }
 
     if (node.role === "paragraph") props.lines = node.evidence.lines;
+
+    // The step is chosen here, where the measurements are, rather than in the
+    // emitter — which sees only one node and has no idea what "large" means on
+    // this page.
+    if (node.role === "heading" || node.role === "paragraph") {
+      props.typeStep = typeStepFor(
+        node.box.h / Math.max(1, node.evidence.lines),
+        medianLineHeight,
+      );
+    }
 
     // A button's label is part of the button. Detection reports it as a nested
     // text region, and rendering that region as its own component produced a
