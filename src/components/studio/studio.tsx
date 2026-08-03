@@ -407,7 +407,11 @@ function StagePanel({
               every `dark:text-slate-50` in the generated markup as white on
               white. The generated code carries both themes, so honouring the
               current one is both simpler and what the user will actually see. */}
-          <PreviewTree tree={result.tree} columns={result.ir.canvas.grid.columns} />
+          <PreviewTree
+            tree={result.tree}
+            columns={result.ir.canvas.grid.columns}
+            tokens={result.design}
+          />
         </div>
       );
   }

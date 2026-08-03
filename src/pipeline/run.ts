@@ -250,7 +250,7 @@ export async function runPipeline(
   passes.push({ pass: "synthesise", engine, ms: Date.now() - synthStart });
 
   const emitStart = Date.now();
-  const code = emitTsx(tree, ir.canvas.grid.columns);
+  const code = emitTsx(tree, ir.canvas.grid.columns, design);
   passes.push({ pass: "emit", engine: "deterministic", ms: Date.now() - emitStart });
 
   // ── 7 validate ───────────────────────────────────────────────────

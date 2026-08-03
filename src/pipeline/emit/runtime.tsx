@@ -16,7 +16,8 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 
 import type { ComponentNode, ComponentTree } from "../ir/schema.ts";
-import { emit, IMAGE_DECORATION_CLASSES } from "./classes.ts";
+import { emit, IMAGE_DECORATION_CLASSES, IMAGE_DECORATION_STYLE } from "./classes.ts";
+import type { DesignTokens } from "../design/tokens.ts";
 
 /** Tags the emitter can produce. Anything unexpected renders as a div. */
 const ALLOWED = new Set([
@@ -27,8 +28,13 @@ function toStyle(style: Record<string, string | number> | undefined): CSSPropert
   return style as CSSProperties | undefined;
 }
 
-function renderNode(node: ComponentNode, totalColumns: number, key: string): ReactNode {
-  const spec = emit(node, totalColumns);
+function renderNode(
+  node: ComponentNode,
+  totalColumns: number,
+  key: string,
+  tokens?: DesignTokens,
+): ReactNode {
+  const spec = emit(node, totalColumns, tokens);
   const Tag = (ALLOWED.has(spec.tag) ? spec.tag : "div") as "div";
 
   const children: ReactNode[] = [];
@@ -36,7 +42,9 @@ function renderNode(node: ComponentNode, totalColumns: number, key: string): Rea
   if (spec.decoration === "image") {
     children.push(
       <div key="decoration" className={IMAGE_DECORATION_CLASSES.wrap}>
-        <span className={IMAGE_DECORATION_CLASSES.label}>Image</span>
+        <span className={IMAGE_DECORATION_CLASSES.label} style={toStyle(IMAGE_DECORATION_STYLE)}>
+          Image
+        </span>
       </div>,
     );
   } else if (spec.text) {
@@ -44,7 +52,7 @@ function renderNode(node: ComponentNode, totalColumns: number, key: string): Rea
   }
 
   node.children.forEach((child, i) => {
-    children.push(renderNode(child, totalColumns, `${key}.${i}`));
+    children.push(renderNode(child, totalColumns, `${key}.${i}`, tokens));
   });
 
   return (
@@ -64,9 +72,12 @@ function renderNode(node: ComponentNode, totalColumns: number, key: string): Rea
 export function PreviewTree({
   tree,
   columns,
+  tokens,
 }: {
   tree: ComponentTree;
   columns: number;
+  /** Omitted deliberately by the before/after comparison, to show the default. */
+  tokens?: DesignTokens;
 }) {
-  return <>{renderNode(tree.root, columns, "root")}</>;
+  return <>{renderNode(tree.root, columns, "root", tokens)}</>;
 }
