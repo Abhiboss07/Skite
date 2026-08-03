@@ -36,6 +36,7 @@ Repository: `git@github.com:Abhiboss07/Skite.git` · branch `main`
 | `v1.1-semantic-design` | Post-structure pruning, List/Divider, design constraint engine. F1 95.4 % |
 | `v1.2-tokenised-emit` | Emitter consumes design tokens; appearance and layout separated in the output |
 | `v1.3-type-calibration` | Type scale anchored to the drawing; visual regression check added |
+| `v1.4-ocr-wired` | Opt-in transcription via Ollama; semantic IR schema bug fixed; `npm test` added |
 
 ### Stack
 
@@ -219,6 +220,12 @@ recall than it gained. Full history in `reports/iterations.json`.
 
 ### Phase 3 — semantic layer ✅ except text-dependent types
 
+**OCR is wired** (`src/pipeline/ocr/`), opt-in, through the Ollama provider. It
+runs after the IR validates, so the model fills a field in a structure whose
+shape is fixed; every failure path falls back to placeholders. Crops are sent
+rather than coordinates — asking a 3B model to transcribe a region by coordinate
+returned real page text attached to the wrong regions, confidently.
+
 `src/pipeline/semantic/` turns regions into meaning: Navigation, Hero, Section,
 Footer, Grid, Gallery, Card, Form, Logo, Heading, Subheading, Label, Paragraph,
 Image, Icon, Button, CTAButton, Input.
@@ -262,8 +269,12 @@ Visualised in the Studio's **Semantic** tab: colour-coded overlay beside the tre
       (3 control labels, 3 map fragments). Both need the containment tree, which
       detection does not have — so this belongs *after* structure, not inside the
       frozen detector.
-- [ ] **Text-dependent types**, once OCR runs: PricingCard, Testimonial, FAQItem,
-      Stat, FeatureItem.
+- [ ] **Text-dependent types**: PricingCard, Testimonial, FAQItem, Stat,
+      FeatureItem. No longer blocked on OCR existing — it now does — but blocked
+      on it being *reliable enough*. At 9/19 regions with uncalibrated
+      confidence, classifying a card as a PricingCard on what was read would be
+      building on sand. Needs either a larger vision model or per-region
+      confidence that means something.
 - [ ] **List and Divider** types are declared in the schema but no rule emits
       them yet.
 
@@ -331,8 +342,16 @@ draws sections as detached rectangles with clean gaps, and never draws display
 type or halftone illustrations. All three broke the detector in ways no synthetic
 sample reproduced.
 
-**No OCR on the offline path.** The heuristic classifier reports empty text at
-zero confidence rather than inventing plausible copy.
+**OCR is opt-in and partial.** `ocr: true` or `SKITE_OCR=1` transcribes through
+Ollama; off by default because it costs ~11s against ~400ms for everything else.
+On the test wireframe it reads 9 of 19 regions — nav labels and button text
+reliably, but nothing for the logo or the hero headline despite both being large
+and legible. Its confidence is *not calibrated*: it reported 96% mean while
+getting two of nine regions wrong. Treat transcription as a convenience, not as
+a measured capability, until there is ground truth for text.
+
+The offline path still reads nothing, and reports empty text at zero confidence
+rather than inventing plausible copy.
 
 **Grid inference is weak on freehand layouts** — it fitted 12 columns at 39 %
 confidence on a 1–2 column page. The pipeline reports the low confidence rather
@@ -363,6 +382,11 @@ merges it with the line beneath into one text block. Inherited, not introduced.
 ---
 
 ## 7 · Working agreement
+
+**Fail, don't warn.** The semantic IR failed its own schema on every run for two
+releases while the build, the benchmark and the validator stayed green — the
+failure went into a `warnings` array and everyone read past it. Anything the
+code calls a contract belongs in `npm test`, so breaking it stops the build.
 
 **Look at it.** A build that compiles and a validator that passes say nothing
 about whether a page renders — both were green while the generated component
@@ -400,6 +424,7 @@ rests on the honesty of its measurements.
 ## 8 · Commands
 
 ```bash
+npm test                                      # contract tests — run these first
 npm run dev                                   # site + Studio at :3000
 npm run build && npm start                    # production
 npm run dataset                               # regenerate 60 synthetic samples
@@ -410,6 +435,8 @@ node scripts/analyse.ts "Test Images/<file>"  # stage-by-stage console output
 node scripts/semantic.ts "Test Images/<file>" # semantic tree
 node scripts/false-positives.ts "<file>"      # enumerate and characterise FPs
 node scripts/ai-probe.ts                      # provider health + live test
+node scripts/ocr.ts "<image>"                 # transcription, opt-in
+SKITE_OCR=1 …                                 # or per-run: { ocr: true }
 node scripts/visual-check.ts "<image>" --label after --compare before
                                               # render, count wrapped headings,
                                               # write a 3-panel comparison
