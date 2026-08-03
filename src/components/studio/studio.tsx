@@ -286,34 +286,80 @@ function StagePanel({
         );
       }
       return (
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-foreground-subtle">
-            {o.read}/{o.attempted} regions read via {o.engine} in {o.ms} ms
-            {o.note ? ` · ${o.note}` : ""}
-          </p>
-        <table className="w-full text-sm">
-          <caption className="sr-only">Transcribed text by region</caption>
-          <thead className="text-left text-xs uppercase tracking-wider text-foreground-subtle">
-            <tr>
-              <th scope="col" className="pb-2 pr-4 font-medium">Region</th>
-              <th scope="col" className="pb-2 pr-4 font-medium">Role</th>
-              <th scope="col" className="pb-2 pr-4 font-medium">Text</th>
-              <th scope="col" className="pb-2 font-medium">Confidence</th>
-            </tr>
-          </thead>
-          <tbody className="font-mono text-xs">
-            {withText.map((node) => (
-              <tr key={node.id} className="border-t border-white/5">
-                <td className="py-2 pr-4">{node.id}</td>
-                <td className="py-2 pr-4">{node.role}</td>
-                <td className="py-2 pr-4 font-sans">{node.content?.text}</td>
-                <td className="py-2 tabular-nums">
-                  {((node.content?.confidence ?? 0) * 100).toFixed(0)}%
-                </td>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="text-foreground-subtle">
+              {o.read}/{o.attempted} regions read via {o.engine} in {o.ms} ms
+            </span>
+            <ConfidenceKey />
+          </div>
+          {o.note && <p className="text-xs text-foreground-subtle">{o.note}</p>}
+
+          {/* Per region, not an average.
+              A mean hides the shape of the distribution, and the shape is the
+              whole question: nine reads at 95% and two at 40% is a different
+              situation from eleven at 88%, and only one of them is safe to
+              build on. */}
+          <table className="w-full text-sm">
+            <caption className="sr-only">Transcribed text by region, with confidence</caption>
+            <thead className="text-left text-xs tracking-wider text-foreground-subtle uppercase">
+              <tr>
+                <th scope="col" className="pb-2 pr-4 font-medium">Region</th>
+                <th scope="col" className="pb-2 pr-4 font-medium">Role</th>
+                <th scope="col" className="pb-2 pr-4 font-medium">Text</th>
+                <th scope="col" className="pb-2 pr-3 font-medium">Confidence</th>
+                <th scope="col" className="pb-2 font-medium">Fit</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="font-mono text-xs">
+              {withText.map((node) => {
+                const c = node.content!;
+                const band = confidenceBand(c.confidence);
+                return (
+                  <tr key={node.id} className="border-t border-white/5">
+                    <td className="py-2 pr-4">{node.id}</td>
+                    <td className="py-2 pr-4 text-foreground-subtle">{node.role}</td>
+                    <td className="py-2 pr-4 font-sans whitespace-pre-line">{c.text}</td>
+                    <td className="py-2 pr-3">
+                      <span className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10"
+                        >
+                          <span
+                            className={cn("block h-full rounded-full", band.bar)}
+                            style={{ width: `${Math.round(c.confidence * 100)}%` }}
+                          />
+                        </span>
+                        <span className={cn("tabular-nums", band.text)}>
+                          {(c.confidence * 100).toFixed(0)}%
+                        </span>
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      {c.fits === false ? (
+                        <span
+                          className="text-rose-400"
+                          title="Longer than this region could plausibly hold — the read may belong to a different part of the page."
+                        >
+                          too long
+                        </span>
+                      ) : (
+                        <span className="text-foreground-subtle">ok</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <p className="text-xs text-foreground-subtle">
+            Confidence is the model&rsquo;s own score and is <strong>not calibrated</strong> — it has
+            reported 96% while attributing one region&rsquo;s text to another. <em>Fit</em> is an
+            independent check that the transcription is a plausible length for the box it came from,
+            so two signals have to agree before a read is trustworthy.
+          </p>
         </div>
       );
     }
@@ -444,6 +490,34 @@ function StagePanel({
         </div>
       );
   }
+}
+
+/**
+ * Confidence bands.
+ *
+ * Three bands rather than a continuous colour ramp, because the decision a
+ * reader makes is discrete: trust it, check it, or ignore it.
+ */
+function confidenceBand(value: number) {
+  if (value >= 0.9) return { bar: "bg-emerald-400", text: "text-emerald-400", label: "high" };
+  if (value >= 0.7) return { bar: "bg-amber-400", text: "text-amber-400", label: "uncertain" };
+  return { bar: "bg-rose-400", text: "text-rose-400", label: "low" };
+}
+
+function ConfidenceKey() {
+  return (
+    <span className="flex items-center gap-3 text-foreground-subtle">
+      {([0.95, 0.8, 0.4] as const).map((v) => {
+        const b = confidenceBand(v);
+        return (
+          <span key={b.label} className="flex items-center gap-1.5">
+            <span aria-hidden className={cn("size-2 rounded-full", b.bar)} />
+            {b.label}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 /** Colour by semantic family, so the tree and the overlay read together. */

@@ -60,7 +60,18 @@ export const NodeSchema = z.object({
     .object({
       text: z.string(),
       lines: z.number(),
+      /** The model's own score. Not calibrated — see `fits`. */
       confidence: z.number().min(0).max(1),
+      /**
+       * Whether the transcription is a plausible length for the box it came
+       * from, measured independently of what the model claimed.
+       *
+       * A model's confidence is its opinion of itself, and it has been observed
+       * reporting 96% while attributing one region's text to another. This is a
+       * second opinion that cannot be talked into agreeing: a 79×20 box does not
+       * hold sixty characters, whatever the model says about it.
+       */
+      fits: z.boolean().optional(),
     })
     .nullable(),
 

@@ -27,6 +27,8 @@ import { runPipeline } from "../src/pipeline/run.ts";
 import { IRSchema } from "../src/pipeline/ir/schema.ts";
 import { SemanticIRSchema } from "../src/pipeline/semantic/schema.ts";
 import { DesignTokensSchema, assertNoLayoutTokens } from "../src/pipeline/design/tokens.ts";
+import { readText, textFits } from "../src/pipeline/ocr/read.ts";
+import type { AIProvider } from "../src/ai/types.ts";
 
 const root = join(import.meta.dirname, "..");
 const realImage = join(root, "Test Images", "website-wireframe-services.jpg");
@@ -120,4 +122,97 @@ test("the offline path invents no text", async () => {
   const withText = result.ir.nodes.filter((n) => n.content?.text);
   assert.equal(withText.length, 0, "the offline classifier produced text it could not have read");
   assert.equal(result.report.textExtracted, false);
+});
+
+/* ── transcription ─────────────────────────────────────────────────── */
+
+/**
+ * A provider that records how it was called and answers instantly.
+ *
+ * No Ollama, no network, no 18 seconds — the thing under test is the *calling
+ * pattern*, not the model.
+ */
+function recordingProvider(): AIProvider & { calls: number[] } {
+  const calls: number[] = [];
+  return {
+    calls,
+    id: "ollama",
+    label: "stub",
+    model: "stub",
+    capabilities: { vision: true, jsonSchema: true, streaming: false, contextWindow: 16384 },
+    async health() {
+      return {
+        id: "ollama" as const,
+        label: "stub",
+        ok: true,
+        detail: "ready",
+        model: "stub",
+        capabilities: { vision: true, jsonSchema: true, streaming: false, contextWindow: 16384 },
+      };
+    },
+    async generateVision(request) {
+      calls.push(request.images.length);
+      return {
+        text: "",
+        json: { text: "HELLO", confidence: 0.9 },
+        provider: "ollama" as const,
+        model: "stub",
+        task: request.task,
+        ms: 0,
+        usage: { inputTokens: 0, outputTokens: 0, estimatedCostInr: 0 },
+        refused: false,
+      };
+    },
+    async generate() {
+      throw new Error("not used");
+    },
+    async generateCode() {
+      throw new Error("not used");
+    },
+    async generatePrompt() {
+      throw new Error("not used");
+    },
+    async summarize() {
+      throw new Error("not used");
+    },
+  } as AIProvider & { calls: number[] };
+}
+
+test("transcription sends exactly one image per request", async () => {
+  // The regression this guards. Batching several crops into one call made the
+  // model attend to one image and attribute its text to a different crop's id:
+  // the CONTACT button read as "LOGO", a caption returned a heading's text, and
+  // the logo and hero headline returned nothing at all. Sent alone, all three
+  // read correctly. Any future batching reintroduces that failure.
+  const result = await runPipeline(readFileSync(realImage), { classifier: "heuristic", ocr: false });
+  const provider = recordingProvider();
+  const ocr = await readText(result.ir, Buffer.from(result.images.working.split(",")[1], "base64"), {
+    provider,
+  });
+
+  assert.ok(provider.calls.length > 0, "no transcription requests were made");
+  assert.deepEqual(
+    [...new Set(provider.calls)],
+    [1],
+    `every request must carry exactly one image; saw batches of ${[...new Set(provider.calls)].join(", ")}`,
+  );
+  assert.equal(ocr.ran, true);
+});
+
+test("a transcription that cannot fit its box is flagged", async () => {
+  // The independent second opinion on a read. A model's confidence is its
+  // opinion of itself; this is arithmetic about the box.
+  assert.equal(textFits("ABOUT", { w: 79, h: 20 }, 1), true);
+  assert.equal(
+    textFits("Body copy from your sketch will appear here, and then some more.", { w: 79, h: 20 }, 1),
+    false,
+    "sixty characters cannot fit a 79x20 box",
+  );
+  // A two-line answer in a region the detector recorded as one line must not be
+  // flagged — text merging folds drawn lines together, and judging the answer
+  // against the recorded count cried wolf on a correct read.
+  assert.equal(
+    textFits("HEADLINE\nLorem ipsum dolor sit amet, consectetur adipiscing", { w: 647, h: 165 }, 1),
+    true,
+  );
 });
