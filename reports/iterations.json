@@ -838,5 +838,52 @@
       "ms": 256.71666666666664
     },
     "gate": "mixed"
+  },
+  {
+    "iteration": 18,
+    "label": "B — design constraint engine",
+    "at": "2026-08-03T05:15:02.739Z",
+    "images": {
+      "website-wireframe-services": {
+        "fidelity": 0.9059370579095606,
+        "geometry": 0.8583799450007829,
+        "order": 1,
+        "coverage": 0.9393939393939394,
+        "componentAccuracy": 0.8709677419354839,
+        "precision": 0.96875,
+        "recall": 0.9393939393939394,
+        "f1": 0.9538461538461539,
+        "falsePositives": 1,
+        "falseNegatives": 2,
+        "detected": 32,
+        "annotated": 33,
+        "correct": 27,
+        "ms": 497
+      }
+    },
+    "real": {
+      "fidelity": 0.9059370579095606,
+      "geometry": 0.8583799450007829,
+      "order": 1,
+      "coverage": 0.9393939393939394,
+      "componentAccuracy": 0.8709677419354839,
+      "precision": 0.96875,
+      "recall": 0.9393939393939394,
+      "f1": 0.9538461538461539,
+      "falsePositives": 1,
+      "falseNegatives": 2,
+      "detected": 32,
+      "annotated": 33,
+      "correct": 27,
+      "ms": 497
+    },
+    "synthetic": {
+      "fidelity": 0.8690825376888459,
+      "f1": 0.828619903489748,
+      "componentAccuracy": 0.876865495615496,
+      "coverage": 0.8112037037037034,
+      "ms": 299.6666666666667
+    },
+    "gate": "mixed"
   }
 ]

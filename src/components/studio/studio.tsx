@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { PreviewTree } from "@/pipeline/emit/runtime";
 import type { ComponentTree, IR } from "@/pipeline/ir/schema";
 import type { SemanticIR, SemanticNode } from "@/pipeline/semantic/schema";
+import type { DesignTokens } from "@/pipeline/design/tokens";
+import type { DriftReport } from "@/pipeline/design/verify";
 import type { RunReport } from "@/pipeline/run";
 
 import { BoxOverlay, RoleLegend } from "./overlay";
@@ -27,6 +29,8 @@ type Result = {
   ir: IR;
   tree: ComponentTree;
   semantic: SemanticIR;
+  design: DesignTokens;
+  drift: DriftReport;
   code: string;
   prompt: string;
   images: { working: string; cleaned: string };
@@ -42,6 +46,7 @@ const STAGES = [
   { id: "components", label: "Components", hint: "Regions with their assigned roles and confidences." },
   { id: "layout", label: "Layout boxes", hint: "The inferred grid, and which regions snapped to it." },
   { id: "semantic", label: "Semantic", hint: "What each region means, and the rule that decided it." },
+  { id: "design", label: "Design", hint: "Generated appearance — and proof it moved no layout." },
   { id: "ir", label: "IR", hint: "The intermediate representation every later stage reads." },
   { id: "prompt", label: "Prompt", hint: "Exactly what the classification model is sent." },
   { id: "code", label: "Code", hint: "The generated component." },
@@ -377,6 +382,9 @@ function StagePanel({
         </div>
       );
 
+    case "design":
+      return <DesignPanel design={result.design} drift={result.drift} />;
+
     case "ir":
       return (
         <Pre
@@ -483,6 +491,153 @@ function SemanticOverlay({ semantic, image }: { semantic: SemanticIR; image: str
           );
         })}
       </svg>
+    </div>
+  );
+}
+
+function Swatch({ name, value, note }: { name: string; value: string; note?: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="size-9 shrink-0 rounded-lg border border-white/15"
+        style={{ backgroundColor: value }}
+      />
+      <span className="font-mono text-xs">
+        <span className="text-foreground-subtle">{name}</span>
+        <br />
+        {value}
+        {note && <span className="text-foreground-subtle"> · {note}</span>}
+      </span>
+    </div>
+  );
+}
+
+function DesignPanel({ design, drift }: { design: DesignTokens; drift: DriftReport }) {
+  const p = design.palette;
+  const steps = ["display", "heading", "subheading", "body", "label", "caption"] as const;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* The claim this whole pass rests on, checked rather than asserted. */}
+      <div
+        className={cn(
+          "rounded-xl border p-4 text-sm",
+          drift.ok
+            ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300"
+            : "border-rose-500/30 bg-rose-500/5 text-rose-300",
+        )}
+      >
+        <strong>
+          {drift.ok ? "No layout drift." : `${drift.violations.length} layout violation(s).`}
+        </strong>{" "}
+        Geometry {(drift.geometry * 100).toFixed(2)}%, reading order{" "}
+        {(drift.order * 100).toFixed(2)}%, coverage {(drift.coverage * 100).toFixed(2)}% across{" "}
+        {drift.nodesChecked} nodes. The design pass may invent appearance; direction, columns,
+        span, gap, order and alignment come from the drawing and are compared exactly.
+        {drift.violations.slice(0, 4).map((v) => (
+          <span key={`${v.node}.${v.property}`} className="mt-1 block font-mono text-xs">
+            ✗ {v.node}.{v.property}: {v.before} → {v.after}
+          </span>
+        ))}
+      </div>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <div className="glass rounded-xl p-4">
+          <h3 className="mb-3 text-xs font-medium tracking-wider text-foreground-subtle uppercase">
+            Palette · {p.source}
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Swatch name="background" value={p.background} />
+            <Swatch name="surface" value={p.surface} />
+            <Swatch name="foreground" value={p.foreground} note={`${p.contrast.foreground}:1`} />
+            <Swatch name="muted" value={p.muted} note={`${p.contrast.muted}:1`} />
+            <Swatch name="accent" value={p.accent} note={`${p.contrast.accent}:1`} />
+            <Swatch name="border" value={p.border} />
+          </div>
+        </div>
+
+        <div className="glass rounded-xl p-4">
+          <h3 className="mb-3 text-xs font-medium tracking-wider text-foreground-subtle uppercase">
+            Type · ratio {design.type.ratio}
+          </h3>
+          <ul className="space-y-1.5">
+            {steps.map((step) => {
+              const s = design.type[step];
+              return (
+                <li key={step} className="flex items-baseline justify-between gap-3">
+                  <span
+                    className="truncate"
+                    style={{
+                      fontSize: `${Math.min(2.2, s.size)}rem`,
+                      fontWeight: s.weight,
+                      letterSpacing: `${s.tracking}em`,
+                      lineHeight: s.lineHeight,
+                    }}
+                  >
+                    {step}
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-foreground-subtle">
+                    {s.size}rem · {s.weight}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </section>
+
+      <section className="glass rounded-xl p-4">
+        <h3 className="mb-3 text-xs font-medium tracking-wider text-foreground-subtle uppercase">
+          Spacing · base unit {design.baseUnit}px
+        </h3>
+        <div className="flex flex-wrap items-end gap-2">
+          {design.spacing.map((v) => (
+            <div key={v} className="flex flex-col items-center gap-1">
+              {/* Painted with the generated accent rather than a theme class, so
+                  the ladder is shown in the palette this run actually produced. */}
+              <span
+                className="w-6 rounded-sm"
+                style={{ height: Math.max(2, v / 2), backgroundColor: p.accent }}
+              />
+              <span className="font-mono text-[10px] text-foreground-subtle">{v}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-5 sm:grid-cols-3">
+        {(["sm", "md", "lg"] as const).map((size) => (
+          <div key={size} className="glass rounded-xl p-4">
+            <p className="mb-3 font-mono text-xs text-foreground-subtle">
+              radius {design.radius[size]} · shadow {size}
+            </p>
+            <div
+              className="h-16 w-full"
+              style={{
+                borderRadius: design.radius[size],
+                boxShadow: design.shadow[size],
+                backgroundColor: p.surface,
+                border: `1px solid ${p.border}`,
+              }}
+            />
+          </div>
+        ))}
+      </section>
+
+      <section>
+        <h3 className="mb-2 text-xs font-medium tracking-wider text-foreground-subtle uppercase">
+          Why these values
+        </h3>
+        <ul className="space-y-1.5 text-xs">
+          {design.rationale.map((r) => (
+            <li key={r.token} className="flex gap-2">
+              <span className="shrink-0 font-mono text-foreground-subtle">{r.token}</span>
+              <span>{r.because}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

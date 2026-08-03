@@ -20,6 +20,9 @@ import { emitTsx, usedComponents } from "./emit/tsx.ts";
 import { validateCode, type Validation } from "./validate/check.ts";
 import { prune } from "./prune/prune.ts";
 import { classifySemantics } from "./semantic/classify.ts";
+import { generateDesign } from "./design/engine.ts";
+import { verifyNoDrift, type DriftReport } from "./design/verify.ts";
+import { DesignTokensSchema, type DesignTokens } from "./design/tokens.ts";
 import { SemanticIRSchema, type SemanticIR } from "./semantic/schema.ts";
 import type { Classification, ComponentTree, IR, IRNode } from "./ir/schema.ts";
 import { IRSchema } from "./ir/schema.ts";
@@ -36,6 +39,10 @@ export type PipelineResult = {
   tree: ComponentTree;
   /** The semantic layer: what the regions mean, derived after the IR validates. */
   semantic: SemanticIR;
+  /** Appearance only — the design pass may not express a position. */
+  design: DesignTokens;
+  /** Proof that the design pass moved nothing. */
+  drift: DriftReport;
   code: string;
   prompt: string;
   /** Base64 PNGs for the debug UI. */
@@ -214,6 +221,29 @@ export async function runPipeline(
     warnings.push(`Semantic IR failed its own schema: ${semanticCheck.error.issues[0]?.message ?? "unknown"}`);
   }
 
+  // ── 5b design ────────────────────────────────────────────────────
+  // Appearance is generated from the semantic IR and the source pixels. The
+  // token schema has no positional field, so this pass cannot express a layout
+  // change; `verifyNoDrift` then confirms it did not make one anyway.
+  const designStart = Date.now();
+  const design = await generateDesign(semantic, input);
+  passes.push({ pass: "design", engine: design.engine, ms: Date.now() - designStart });
+
+  const designCheck = DesignTokensSchema.safeParse(design);
+  if (!designCheck.success) {
+    warnings.push(`Design tokens failed their schema: ${designCheck.error.issues[0]?.message ?? "unknown"}`);
+  }
+
+  // Re-derive the semantic IR and compare. Identical input must give identical
+  // layout; anything else means the design pass reached somewhere it should not.
+  const drift = verifyNoDrift(semantic, classifySemantics(ir));
+  if (!drift.ok) {
+    warnings.push(
+      `Design drift detected across ${drift.violations.length} propert(ies) — ` +
+        drift.violations.slice(0, 3).map((v) => `${v.node}.${v.property} ${v.before}→${v.after}`).join(", "),
+    );
+  }
+
   // ── 6 synthesise + emit ──────────────────────────────────────────
   const synthStart = Date.now();
   const { tree, engine } = synthesizeDeterministic(ir);
@@ -250,6 +280,8 @@ export async function runPipeline(
     ir,
     tree,
     semantic,
+    design,
+    drift,
     code,
     prompt,
     images: {

@@ -72,6 +72,8 @@ export async function POST(request: Request) {
       ir: result.ir,
       tree: result.tree,
       semantic: result.semantic,
+      design: result.design,
+      drift: result.drift,
       code: result.code,
       prompt: result.prompt,
       images: result.images,
