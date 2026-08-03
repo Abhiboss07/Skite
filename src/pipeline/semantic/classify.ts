@@ -155,6 +155,24 @@ function classifyNode(node: IRNode, ctx: Ctx): Decision {
     const perLine = node.box.h / Math.max(1, lines);
     const relative = perLine / Math.max(1, ctx.medianTextHeight);
 
+    // A drawn rule, before anything else in this branch.
+    //
+    // This has to be narrow, and the reason is documented in the detector: in a
+    // wireframe a drawn line *is* the convention for a line of text, so an
+    // aspect-ratio test alone would reclassify every hand-drawn text stroke as
+    // a divider. What separates them is scale relative to the page's own text.
+    // A rule is far thinner than the text around it; a text stroke *is* the
+    // text, so its height sits at the median rather than well below it.
+    // Under half the height of typical text on this page. Measured rather than
+    // chosen: the page's median text height is 21px and its footer rule is 9px,
+    // while a hand-drawn text stroke sits *at* the median by definition.
+    const thinnerThanText = perLine <= ctx.medianTextHeight * 0.5;
+    const aspect = node.box.w / Math.max(1, node.box.h);
+    if (lines === 1 && thinnerThanText && aspect >= 20 && node.box.h / ctx.canvasH <= 0.015) {
+      because.push(`${aspect.toFixed(0)}:1 and ${(perLine / ctx.medianTextHeight).toFixed(2)}× the page's median text height`);
+      return { type: "Divider", rule: "text.divider", confidence: 0.64, because };
+    }
+
     if (lines >= 2) {
       because.push(`${lines} merged lines`);
       return { type: "Paragraph", rule: "text.multiline", confidence: 0.82, because };
@@ -296,7 +314,11 @@ function groupRuns(children: SemanticNode[], ctx: Ctx, nextId: () => string): Se
     const continues =
       last !== undefined &&
       last.type === node.type &&
-      ["Card", "Image", "Icon"].includes(node.type) &&
+      // Text items join a run too, which is what produces a List. Restricting
+      // this to Card/Image/Icon meant a row of navigation links or a row of
+      // captions stayed as loose siblings with no grouping to express that
+      // they belong together.
+      ["Card", "Image", "Icon", "Label", "Paragraph"].includes(node.type) &&
       Math.abs(last.box.w - node.box.w) < last.box.w * 0.3 &&
       Math.min(last.box.y + last.box.h, node.box.y + node.box.h) -
         Math.max(last.box.y, node.box.y) >
@@ -319,8 +341,12 @@ function groupRuns(children: SemanticNode[], ctx: Ctx, nextId: () => string): Se
       gaps.push(run[i].box.x - (run[i - 1].box.x + run[i - 1].box.w));
     }
 
+    // Pictures only → Gallery. Text only → List. A mix, or repeated cards →
+    // Grid. The three are laid out identically and mean different things, and
+    // a generator should be able to tell a nav's links from a card deck.
     const allImages = run.every((n) => n.type === "Image" || n.type === "Icon");
-    const type: SemanticType = allImages ? "Gallery" : "Grid";
+    const allText = run.every((n) => n.type === "Label" || n.type === "Paragraph");
+    const type: SemanticType = allImages ? "Gallery" : allText ? "List" : "Grid";
 
     return {
       id: nextId(),
@@ -338,7 +364,7 @@ function groupRuns(children: SemanticNode[], ctx: Ctx, nextId: () => string): Se
         order: run[0].layout.order,
       },
       evidence: {
-        rule: allImages ? "group.gallery" : "group.grid",
+        rule: allImages ? "group.gallery" : allText ? "group.list" : "group.grid",
         confidence: 0.74,
         because: [`${run.length} repeated ${run[0].type} siblings in a row`],
       },
