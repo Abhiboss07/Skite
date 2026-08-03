@@ -18,6 +18,7 @@ import { buildClassificationPrompt } from "./prompts/classify.ts";
 import { synthesizeDeterministic } from "./synthesize/deterministic.ts";
 import { emitTsx, usedComponents } from "./emit/tsx.ts";
 import { validateCode, type Validation } from "./validate/check.ts";
+import { prune } from "./prune/prune.ts";
 import { classifySemantics } from "./semantic/classify.ts";
 import { SemanticIRSchema, type SemanticIR } from "./semantic/schema.ts";
 import type { Classification, ComponentTree, IR, IRNode } from "./ir/schema.ts";
@@ -133,7 +134,7 @@ export async function runPipeline(
   // ── assemble the IR ──────────────────────────────────────────────
   const roleById = new Map(classification.regions.map((r) => [r.id, r]));
 
-  const nodes: IRNode[] = structured.nodes.map((n) => {
+  const classified: IRNode[] = structured.nodes.map((n) => {
     const assigned = roleById.get(n.id);
     const text = assigned?.text?.trim() ?? "";
     return {
@@ -145,6 +146,18 @@ export async function runPipeline(
         : null,
     };
   });
+
+  // ── 4b prune ─────────────────────────────────────────────────────
+  // Regions that are real ink but not separate components. Needs the
+  // containment tree, so it cannot live in the frozen detector.
+  const pruneStart = Date.now();
+  const pruned = prune(classified);
+  passes.push({ pass: "prune", engine: "structural", ms: Date.now() - pruneStart });
+  for (const cut of pruned.removed) {
+    warnings.push(`Pruned ${cut.id} (${cut.rule}): ${cut.reason}`);
+  }
+
+  const nodes = pruned.nodes;
 
   const componentConfidence = nodes.length
     ? nodes.reduce((sum, n) => sum + n.roleConfidence, 0) / nodes.length
